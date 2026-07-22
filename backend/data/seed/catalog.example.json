@@ -1,0 +1,60 @@
+{
+  "_comment": "EXAMPLE seed format — replace with real GovGuide data. See README.md.",
+  "sources": [
+    {
+      "key": "example_source_1",
+      "title": "Example Department Circular (replace with a real source)",
+      "url": "https://example.gov.lk/circular",
+      "source_type": "circular",
+      "published_date": "2025-01-01",
+      "retrieved_date": "2026-06-20",
+      "confidence": 1.0,
+      "verification_status": "verified"
+    }
+  ],
+  "services": [
+    {
+      "slug": "example_service",
+      "name_en": "Example Service (replace me)",
+      "category": "example",
+      "description": "Synthetic example showing the seed format. Replace with real data.",
+      "variants": [
+        {
+          "condition_label": "standard",
+          "description": "Standard case",
+          "requirements": [
+            {
+              "document_name": "Example document",
+              "is_mandatory": true,
+              "source_key": "example_source_1",
+              "notes": ""
+            }
+          ],
+          "fees": [
+            {"label": "Example fee", "amount_lkr": "0", "source_key": "example_source_1", "notes": ""}
+          ]
+        }
+      ],
+      "offices": [
+        {
+          "name": "Example DS Office",
+          "office_type": "DS",
+          "district": "Colombo",
+          "address": "1 Example Road",
+          "hours": "09:00-16:00",
+          "contact": "011-0000000"
+        }
+      ],
+      "district_variations": [
+        {"district": "Jaffna", "source_key": "example_source_1", "notes": "Example district note"}
+      ],
+      "chunks": [
+        {
+          "content": "Example free-text passage about the service, used for semantic retrieval.",
+          "source_key": "example_source_1",
+          "chunk_index": 0
+        }
+      ]
+    }
+  ]
+}

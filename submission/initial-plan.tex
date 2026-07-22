@@ -1,0 +1,237 @@
+\documentclass[11pt,a4paper]{article}
+
+% ─── Packages ─────────────────────────────────────────────────
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{parskip}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage[hidelinks]{hyperref}
+
+% ─── Colours ──────────────────────────────────────────────────
+\definecolor{accent}{HTML}{1F6FEB}
+\definecolor{ink}{HTML}{16181D}
+\definecolor{soft}{HTML}{5B6270}
+\definecolor{rule}{HTML}{D0D4DC}
+
+% ─── Section styling ──────────────────────────────────────────
+\titleformat{\section}
+  {\large\bfseries\color{accent}}{\thesection.}{0.6em}{}
+\titlespacing*{\section}{0pt}{1.3em}{0.5em}
+\setlist[itemize]{leftmargin=1.3em,itemsep=2pt,topsep=3pt}
+\setlist[enumerate]{leftmargin=1.5em,itemsep=3pt,topsep=3pt}
+
+% ─── Header / footer ──────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small\color{soft}GovGuide \,$\cdot$\, Finals}
+\rhead{\small\color{soft}AgenTriX 2026 \,$\cdot$\, Interim Submission}
+\rfoot{\small\color{soft}\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+\setlength{\headheight}{14pt}
+
+% ─── Helpers ──────────────────────────────────────────────────
+\newcommand{\lead}[1]{\textbf{\color{ink}#1}}
+\newcommand{\subhead}[1]{\par\smallskip\noindent{\bfseries\color{accent}#1}\par\nopagebreak\smallskip}
+
+\begin{document}
+\thispagestyle{fancy}
+
+% ─── Title block ──────────────────────────────────────────────
+\begin{center}
+  {\small\color{soft}\textsc{AgenTriX 2026 \,$\cdot$\, National-Level AI Hackathon \,$\cdot$\, Interim Submission (T+2)}}\\[0.7em]
+  {\Huge\bfseries\color{ink}GovGuide}\\[0.35em]
+  {\large\color{soft}An Agentic AI Navigator for Government \& Citizen Services}\\[0.9em]
+  {\small\color{ink}Domain: Government \& Citizen Services \quad$\vert$\quad Finals \quad$\vert$\quad 20 June 2026}
+\end{center}
+\vspace{0.3em}
+{\color{accent}\hrule height 1.6pt}
+\vspace{0.4em}
+{\color{rule}\hrule height 0.5pt}
+\vspace{1.1em}
+
+% ─── 1. Problem statement ─────────────────────────────────────
+\section{Problem Statement}
+Accessing a government service in Sri Lanka suffers from deep \lead{information asymmetry}. For any
+service --- land deed transfer, NIC renewal, business registration, birth-certificate correction, or
+a passport --- the exact documents to bring, the fees to pay, the correct office, the authorised
+officer, and the processing sequence are known mainly to the staff at one counter on one day. These
+requirements \lead{change over time, are applied inconsistently, and are almost never consolidated in one
+current place online}; the official websites that exist are frequently incomplete, outdated, or hard
+to navigate.
+
+Consider a citizen transferring an \lead{inherited land deed} at their Divisional Secretariat. On the
+first visit they are missing a certified extract; on the second, a copy of the death certificate; on
+the third, a stamp-duty assessment issued at a different counter. Each failed visit is a lost day of
+wages and another bus fare. This pattern --- discovering one more missing document each time ---
+repeats across business registration, NIC renewals, vehicle revenue licences, and birth-certificate
+corrections, each with its own overlapping departments and unclear sequencing.
+
+As a result, a citizen often makes \lead{three or four separate failed visits} before succeeding. The
+cost --- in time, money, and frustration --- is enormous, and it falls disproportionately on
+\lead{rural citizens}, who absorb repeated transport costs for failed trips, and on those with
+\lead{low literacy} in formal Sinhala or English, for whom even the available written guidance is
+inaccessible. There is no single, current, plain-language, and \lead{personalised} source that tells a
+citizen exactly what to do for \emph{their} specific case.
+
+Three properties make this genuinely hard, and make naive solutions fail:
+\begin{itemize}
+  \item \lead{The domain is huge} --- hundreds of services across many departments; a knowledge base
+        cannot be fully built up front, and it goes stale.
+  \item \lead{Processes branch} --- e.g. land transfer differs for inheritance vs.\ sale vs.\ gift;
+        a generic answer is wrong for the individual.
+  \item \lead{Trust matters} --- a confidently wrong answer wastes a real trip, so answers must be
+        grounded and attributable.
+\end{itemize}
+
+% ─── 2. Chosen domain ─────────────────────────────────────────
+\section{Chosen Domain}
+\lead{Government \& Citizen Services} (AgenTriX 2026 Domain~3), focused on Sri Lanka.
+
+We chose this domain because the pain is universal, recurring, and measurable: nearly every adult
+interacts with multiple government services over their lifetime, yet the process remains opaque even
+to educated, persistent citizens. The domain spans a large and diverse set of high-frequency services,
+including:
+\begin{itemize}
+  \item \lead{Civil registration} --- birth, marriage, and death certificates and corrections.
+  \item \lead{Identity and travel} --- NIC issuance and renewal, passport applications.
+  \item \lead{Property} --- land deed transfers, valuations, and registration.
+  \item \lead{Business} --- business-name and company registration, and licences.
+  \item \lead{Transport} --- vehicle revenue licences and registration.
+\end{itemize}
+Because these services share a common failure mode --- scattered and frequently
+changing requirements --- a single intelligent layer that consolidates and personalises them can
+relieve a disproportionate amount of citizen hardship, while remaining directly useful to the
+government agencies that operate the counters.
+
+% ─── 3. Solution outline ──────────────────────────────────────
+\section{Solution Outline --- \textit{GovGuide}}
+\lead{GovGuide} is an agentic AI citizen-services navigator. A citizen describes their need in plain
+language, and the system works through the following steps:
+\begin{enumerate}
+  \item \lead{Identifies the correct service} from the natural-language request.
+  \item Runs a short \lead{clarifying interview} --- asking only the questions needed to pin the exact
+        sub-case, instead of giving a generic answer.
+  \item \lead{Retrieves the current requirements} (documents, fees, the right office and officer, and
+        an estimated timeline) from a curated knowledge base, with a \lead{cited source and a
+        ``last-verified'' date} for every fact.
+  \item If the knowledge base has a gap, autonomous agents \lead{research, curate, and write the answer
+        back} to the knowledge base (our self-expanding RAG loop), then answer.
+  \item Generates a \lead{personalised, printable Action Pack} --- the exact document checklist for the
+        citizen's case, and an estimated cost breakdown.
+\end{enumerate}
+
+\subhead{System architecture at a glance}
+GovGuide is built as a \lead{hierarchical multi-agent system}. A central Supervisor coordinates two
+specialised teams: an \lead{Answering team} that handles the live conversation --- understanding the
+request, identifying the service, conducting the clarifying interview, retrieving evidence, judging
+whether that evidence is sufficient, and composing the answer --- and a \lead{Knowledge-Acquisition
+team} that is invoked only when the knowledge base cannot answer. This separation keeps each agent
+focused on a single responsibility and makes the system's behaviour transparent and auditable.
+
+\subhead{Key innovation: a self-expanding knowledge base}
+Because the government domain is far too large to index in advance, GovGuide does not attempt to
+pre-load every service. Instead, its knowledge base is \lead{self-expanding}: when a citizen's query
+hits a gap, the system autonomously researches the answer from trusted sources, curates it into
+structured, attributable records, and writes it back to the knowledge base. The first citizen to ask
+about a service effectively builds the knowledge for everyone who follows --- keeping the system both
+fresh and continuously improving, and turning each query into a lasting asset.
+
+\subhead{What the citizen receives}
+The end product is not a wall of chat text but a concrete, take-away \lead{Action Pack}: a personalised
+document checklist tailored to the citizen's exact case, together with an estimated cost breakdown, in
+a clean printable format the citizen can carry to the counter. Every item is traceable to a cited,
+dated source, so both the citizen and the officer can trust it.
+
+\subhead{Example: an inherited land-deed transfer}
+Returning to the citizen above: they type, \emph{``I want to transfer my late father's land to my
+name.''} GovGuide identifies the service as a land deed transfer, then asks only the
+few questions that matter --- such as the basis of transfer (inheritance) --- and nothing more. It
+retrieves the inheritance-specific requirements; finding the stamp-duty step missing from the
+knowledge base, it researches and fills that gap on the spot, then returns a single
+Action Pack listing every document needed --- including the death certificate and certified extract
+that previously caused failed visits --- each with an estimated cost and a citation. What once took
+three or four trips becomes one informed visit.
+
+% ─── 4. How we plan to apply AI ───────────────────────────────
+\section{How We Plan to Apply AI}
+AI is the core of GovGuide, applied across three layers --- orchestration, retrieval, and generation.
+
+\subhead{Agentic orchestration with LangGraph}
+The system is orchestrated as a \lead{stateful graph of cooperating agents} using LangGraph. A
+Supervisor routes the conversation between the two teams, maintaining a single shared state so the
+clarifying interview can pause for the citizen's input and resume seamlessly. Each agent owns one
+responsibility:
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabular}{@{}p{1.9cm} l p{8.0cm}@{}}
+\toprule
+\textbf{Team} & \textbf{Agent} & \textbf{Responsibility} \\
+\midrule
+Answering & A1 Intake \& Intent & Normalise the request; extract intent and key entities. \\
+          & A2 Service Identifier & Map the request to a specific, known government service. \\
+          & A3 Clarification & Ask the minimal questions to pin the exact variant of the service. \\
+          & A4 Retrieval & Fetch the most relevant evidence from the knowledge base. \\
+          & A5 Gap Grader & Judge whether the retrieved evidence is sufficient to answer. \\
+          & A6 Action-Pack Gen. & Compose the cited, structured Action Pack for the citizen. \\
+\midrule
+Acquisition & B1 Research & Gather missing evidence from trusted sources on demand. \\
+            & B2 Extract \& Curate & Structure raw findings into attributable records. \\
+            & B3 KB Updater & Embed and write new knowledge back into the base. \\
+            & B4 Moderation & Flag low-confidence knowledge for human review. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subhead{Self-expanding Retrieval-Augmented Generation (RAG)}
+Retrieval is \lead{corrective}. After the Retrieval agent gathers candidate evidence, the Gap Grader
+judges whether it actually answers the question. Only if it does not does the system trigger knowledge
+acquisition --- searching a curated local source pool first and falling back to trusted public sources
+--- within a \lead{bounded retry loop} that prevents runaway cost. Newly gathered knowledge is embedded
+and indexed immediately, so retrieval steadily improves with use.
+
+\subhead{Grounded, cited, and structured generation}
+Every fact the system presents carries its source and a \lead{``last-verified'' date}, which both
+builds citizen trust and curbs hallucination. The final Action Pack is produced as a
+\lead{schema-validated structured object} rather than free text, so no required document is silently
+dropped and the output renders reliably to a clean, printable checklist.
+
+\subhead{Asking the fewest possible questions}
+The clarifying interview is driven by the \lead{structure of each service's variants}: the system asks
+only the questions whose answers actually change the requirements, and skips anything the citizen has
+already implied. A citizen is therefore never burdened with irrelevant prompts, yet the system still
+narrows down to a single, precise, case-specific answer --- the behaviour that turns a generic FAQ into
+genuine, personalised guidance.
+
+\subhead{Reliability by design}
+Autonomy is deliberately \lead{bounded}. Knowledge acquisition runs inside a capped retry loop and
+draws only from an allow-list of trusted sources, so the system cannot loop indefinitely or ingest
+unreliable material. When it cannot confirm a fact, it says so plainly and labels the answer as
+unverified rather than guessing. These guardrails are what make an AI that writes its own knowledge
+base safe to place in front of citizens.
+
+\subhead{Knowledge sources and trustworthiness}
+The knowledge base is assembled from authoritative material --- gazette notifications, Divisional
+Secretariat circulars, and official service-portal content --- supplemented by curated, real-world
+input. Each record stores its origin and verification status, so newly acquired knowledge is clearly
+distinguished from confirmed knowledge until a human reviewer promotes it. This provenance-first design
+is what allows an autonomous, self-expanding system to remain trustworthy enough for government
+information.
+
+\subhead{Expected impact}
+By converting scattered, counter-bound knowledge into a personalised, cited checklist, GovGuide aims to
+collapse three or four failed visits into a single successful one --- saving citizens time, transport
+cost, and lost wages, while easing counter congestion for the agencies. The benefit is largest
+precisely for the rural and lower-literacy citizens who are least able to absorb the current cost.
+
+\end{document}

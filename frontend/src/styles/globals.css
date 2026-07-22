@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background: #f1f5f9;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Spinner used by agent-progress + gap banners */
+@keyframes ggspin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.gg-spin {
+  animation: ggspin 0.7s linear infinite;
+}
+
+/* Print: only the Action Pack survives (see docs/11 §5). */
+@media print {
+  .gg-chrome,
+  .gg-noprint {
+    display: none !important;
+  }
+  .gg-screen {
+    background: #fff !important;
+    padding: 0 !important;
+  }
+  .gg-pack {
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+  body {
+    background: #fff !important;
+  }
+}

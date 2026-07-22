@@ -1,0 +1,18 @@
+# Conda environment for the GovGuide backend.
+#
+#   conda env create -f environment.yml
+#   conda activate govguide
+#
+# Python 3.11 is pinned deliberately: every component of the AI stack
+# (langgraph, chromadb, sentence-transformers, torch, pymupdf) has mature
+# 3.11 wheels on Windows. Python-level dependencies are declared in
+# pyproject.toml and installed editable so `app` is importable everywhere.
+name: govguide
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - -e .[dev]
