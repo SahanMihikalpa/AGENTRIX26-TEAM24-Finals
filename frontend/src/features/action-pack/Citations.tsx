@@ -12,14 +12,14 @@ function CitationCard({ cite, verification }: { cite: Citation; verification: Ve
         </svg>
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-semibold text-slate-800">{cite.title}</div>
-        <div className="mt-0.5 text-[12.5px] text-slate-500">Last verified: {fmtDate(cite.lastVerified)}</div>
+        <div className="text-sm font-semibold text-ink-800">{cite.title}</div>
+        <div className="mt-0.5 text-[12.5px] text-ink-500">Last verified: {fmtDate(cite.lastVerified)}</div>
       </div>
       <VerificationDot verification={verification} />
     </>
   );
   const cls =
-    "flex items-center gap-3 rounded-xl border border-slate-200 p-[13px_15px] transition-colors hover:border-slate-300 hover:bg-[#fafbfc]";
+    "flex items-center gap-3 rounded-xl border border-line p-[13px_15px] transition-colors hover:border-slate-300 hover:bg-[#fafbfc]";
   return cite.url ? (
     <a href={cite.url} target="_blank" rel="noopener noreferrer" className={cls}>
       {inner}
@@ -32,8 +32,8 @@ function CitationCard({ cite, verification }: { cite: Citation; verification: Ve
 export function Citations({ citations, verification }: { citations: Citation[]; verification: Verification }) {
   return (
     <section className="mb-2">
-      <h2 className="m-0 mb-1 text-base font-bold">Sources &amp; trust</h2>
-      <p className="m-0 mb-4 text-[13.5px] text-slate-500">
+      <h2 className="m-0 mb-1 text-base font-bold text-ink-900">Sources &amp; trust</h2>
+      <p className="m-0 mb-4 text-[13.5px] text-ink-500">
         Every requirement above is based on these official sources.
       </p>
       <div className="flex flex-col gap-2.5">

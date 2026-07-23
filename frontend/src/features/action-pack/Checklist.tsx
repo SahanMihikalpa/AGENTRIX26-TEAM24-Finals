@@ -33,8 +33,8 @@ export function Checklist({
 
   return (
     <section className="mb-[30px]">
-      <h2 className="m-0 mb-1 text-base font-bold">What to bring</h2>
-      <p className="m-0 mb-4 text-[13.5px] text-slate-500">Tick each item as you collect it.</p>
+      <h2 className="m-0 mb-1 text-base font-bold text-ink-900">What to bring</h2>
+      <p className="m-0 mb-4 text-[13.5px] text-ink-500">Tick each item as you collect it.</p>
       {documents.map((item, i) => {
         const cite = item.sourceId != null ? citationsBySource.get(item.sourceId) : undefined;
         return (
@@ -45,9 +45,9 @@ export function Checklist({
               onChange={() => setChecked((c) => ({ ...c, [i]: !c[i] }))}
               className="mt-[3px] h-[18px] w-[18px] flex-none cursor-pointer accent-brand"
             />
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-[9px]">
-                <span className="text-[15px] font-medium text-slate-800">{item.name}</span>
+                <span className="text-[15px] font-medium text-ink-800">{item.name}</span>
                 {item.mandatory ? (
                   <span className="rounded-[5px] bg-brand-soft px-[7px] py-0.5 text-[10.5px] font-bold uppercase tracking-[.04em] text-brand">
                     Required

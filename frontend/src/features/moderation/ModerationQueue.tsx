@@ -67,8 +67,8 @@ export function ModerationQueue() {
   return (
     <div className="mx-auto max-w-[860px] px-5 py-8">
       <header className="mb-5">
-        <h1 className="m-0 text-[26px] font-bold tracking-[-0.02em]">Moderation queue</h1>
-        <p className="m-0 mt-1.5 text-[14.5px] leading-relaxed text-slate-600">
+        <h1 className="m-0 text-[26px] font-bold tracking-[-0.02em] text-ink-900">Moderation queue</h1>
+        <p className="m-0 mt-1.5 text-[14.5px] leading-relaxed text-ink-600">
           Knowledge the agents gathered on their own. It is already being served with a
           &ldquo;pending verification&rdquo; label — promote what checks out, reject what
           doesn&apos;t.
@@ -93,9 +93,9 @@ export function ModerationQueue() {
       {load === "loading" && <p className="text-sm text-slate-500">Loading the queue…</p>}
 
       {load === "ready" && items.length === 0 && (
-        <div className="rounded-xl border border-slate-200 bg-white px-5 py-8 text-center">
-          <div className="text-sm font-semibold text-slate-800">Nothing awaiting review</div>
-          <p className="m-0 mt-1 text-[13.5px] text-slate-500">
+        <div className="rounded-2xl border border-line bg-white px-5 py-8 text-center shadow-card">
+          <div className="text-sm font-semibold text-ink-800">Nothing awaiting review</div>
+          <p className="m-0 mt-1 text-[13.5px] text-ink-500">
             Every gathered source has been reviewed. New ones appear here as the agents
             fill knowledge gaps.
           </p>

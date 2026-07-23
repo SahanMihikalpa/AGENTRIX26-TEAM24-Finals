@@ -5,7 +5,7 @@ export function Logo({ size = 32, withWordmark = true }: { size?: number; withWo
   return (
     <div className="inline-flex items-center gap-2.5">
       <div
-        className="flex items-center justify-center rounded-[9px] bg-brand"
+        className="flex items-center justify-center rounded-[9px] bg-gradient-to-br from-brand to-brand-dark shadow-brand"
         style={{ width: size, height: size }}
       >
         <svg width={icon} height={icon} viewBox="0 0 24 24" fill="none">

@@ -53,15 +53,15 @@ function ChatInner() {
   }
 
   return (
-    <div className="gg-screen min-h-screen bg-slate-100">
-      <header className="gg-chrome sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-slate-50/90 px-5 py-3 backdrop-blur">
+    <div className="gg-screen min-h-screen bg-surface">
+      <header className="gg-chrome sticky top-0 z-10 flex items-center justify-between border-b border-line bg-white/90 px-5 py-3 shadow-header backdrop-blur-md">
         <Logo size={28} />
         <Link href="/">
           <Button variant="secondary">Start over</Button>
         </Link>
       </header>
 
-      <main className="mx-auto max-w-[740px] px-5 pb-[220px] pt-6">
+      <main className="mx-auto max-w-[740px] px-4 pb-[220px] pt-6 sm:px-5">
         <MessageList messages={chat.messages} />
 
         {chat.clarify && <ClarifyCard clarify={chat.clarify} onAnswer={chat.answer} />}
@@ -71,7 +71,7 @@ function ChatInner() {
         )}
 
         {chat.error && (
-          <div className="ml-[38px] max-w-[84%] rounded-xl border border-pending-border bg-pending-bg px-4 py-3 text-sm text-pending-text">
+          <div className="ml-0 max-w-full rounded-xl border border-pending-border bg-pending-bg px-4 py-3 text-sm text-pending-text sm:ml-[38px] sm:max-w-[84%]">
             {chat.error}
           </div>
         )}

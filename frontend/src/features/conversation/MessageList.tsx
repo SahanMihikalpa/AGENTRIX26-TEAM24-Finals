@@ -3,7 +3,7 @@ import { cn } from "@/lib/cn";
 
 function Avatar() {
   return (
-    <div className="mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-brand">
+    <div className="mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-gradient-to-br from-brand to-brand-dark shadow-brand">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
         <path d="M20 6L9 17l-5-5" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -17,7 +17,7 @@ export function MessageList({ messages }: { messages: Message[] }) {
       {messages.map((m) =>
         m.role === "user" ? (
           <div key={m.id} className="mb-4 flex animate-rise justify-end">
-            <div className="max-w-[80%] rounded-[16px_16px_4px_16px] bg-brand px-4 py-3 text-[15px] leading-relaxed text-white">
+            <div className="max-w-[88%] rounded-[16px_16px_4px_16px] bg-gradient-to-br from-brand to-brand-dark px-4 py-3 text-[15px] leading-relaxed text-white shadow-brand sm:max-w-[80%]">
               {m.text}
             </div>
           </div>
@@ -26,7 +26,7 @@ export function MessageList({ messages }: { messages: Message[] }) {
             <Avatar />
             <div
               className={cn(
-                "max-w-[84%] rounded-[4px_16px_16px_16px] border border-slate-200 bg-white px-4 py-3 text-[15px] leading-relaxed text-slate-800",
+                "max-w-[88%] rounded-[4px_16px_16px_16px] border border-line bg-white px-4 py-3 text-[15px] leading-relaxed text-ink-700 shadow-card sm:max-w-[84%]",
               )}
             >
               {m.text}

@@ -12,8 +12,8 @@ export function ClarifyCard({ clarify, onAnswer }: { clarify: Clarify; onAnswer:
   const canContinue = answer.length > 0;
 
   return (
-    <div className="mb-4 ml-[38px] max-w-[84%] animate-rise rounded-xl border border-slate-200 bg-white p-[18px]">
-      <div className="mb-2.5 flex items-center gap-[7px] text-[12.5px] font-medium text-slate-500">
+    <div className="mb-4 ml-0 max-w-full animate-rise rounded-2xl border border-line bg-white p-[18px] shadow-card sm:ml-[38px] sm:max-w-[84%]">
+      <div className="mb-2.5 flex items-center gap-[7px] text-[12.5px] font-medium text-ink-500">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="9" stroke="#94a3b8" strokeWidth="1.7" />
           <path d="M9.5 9.5a2.5 2.5 0 1 1 3.2 2.4c-.7.25-1.2.9-1.2 1.6v.5" stroke="#94a3b8" strokeWidth="1.7" strokeLinecap="round" />
@@ -22,7 +22,7 @@ export function ClarifyCard({ clarify, onAnswer }: { clarify: Clarify; onAnswer:
         A couple of quick questions to get this exactly right.
       </div>
 
-      <div className="mb-3.5 text-base font-semibold text-slate-900">{clarify.question}</div>
+      <div className="mb-3.5 text-base font-semibold text-ink-900">{clarify.question}</div>
 
       <div className="mb-3.5 flex flex-wrap gap-2">
         {clarify.options.map((opt) => {
@@ -38,7 +38,7 @@ export function ClarifyCard({ clarify, onAnswer }: { clarify: Clarify; onAnswer:
                 "inline-flex items-center gap-[7px] rounded-[10px] border px-4 py-[9px] text-sm transition-colors",
                 isSel
                   ? "border-[1.5px] border-brand bg-brand-soft font-semibold text-brand"
-                  : "border-[1.5px] border-slate-200 bg-white font-medium text-slate-700 hover:border-slate-300",
+                  : "border-[1.5px] border-line bg-white font-medium text-ink-600 hover:border-slate-300",
               )}
             >
               {isSel && (
@@ -61,7 +61,7 @@ export function ClarifyCard({ clarify, onAnswer }: { clarify: Clarify; onAnswer:
           }}
           placeholder="Or type your own answer…"
           aria-label="Type your own answer"
-          className="mb-3.5 w-full rounded-[10px] border border-slate-200 px-[13px] py-2.5 text-sm outline-none focus:border-brand"
+          className="mb-3.5 w-full rounded-[10px] border border-line px-[13px] py-2.5 text-sm outline-none focus:border-brand"
         />
       )}
 
@@ -71,7 +71,9 @@ export function ClarifyCard({ clarify, onAnswer }: { clarify: Clarify; onAnswer:
           onClick={() => canContinue && onAnswer(answer)}
           className={cn(
             "inline-flex items-center gap-1.5 rounded-[10px] px-5 py-2.5 text-sm font-semibold transition-colors",
-            canContinue ? "bg-brand text-white hover:bg-brand-hover" : "cursor-not-allowed bg-slate-200 text-slate-400",
+            canContinue
+              ? "bg-gradient-to-br from-brand to-brand-dark text-white shadow-brand hover:brightness-105"
+              : "cursor-not-allowed bg-slate-200 text-slate-400",
           )}
         >
           Continue

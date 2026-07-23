@@ -9,8 +9,8 @@ function StepPill({ step }: { step: AgentStep }) {
       className={cn(
         "inline-flex items-center gap-[7px] rounded-full border px-[11px] py-1.5",
         done && "border-verified-border bg-verified-bg",
-        active && "border-blue-200 bg-brand-soft",
-        !done && !active && "border-slate-100 bg-slate-50",
+        active && "border-brand/30 bg-brand-soft",
+        !done && !active && "border-line/70 bg-surface",
       )}
     >
       {done && (
@@ -18,14 +18,14 @@ function StepPill({ step }: { step: AgentStep }) {
           <path d="M20 6L9 17l-5-5" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       )}
-      {active && <span className="gg-spin inline-block h-3 w-3 rounded-full border-2 border-blue-200 border-t-brand" />}
-      {!done && !active && <span className="inline-block h-[11px] w-[11px] rounded-full border-2 border-slate-200" />}
+      {active && <span className="gg-spin inline-block h-3 w-3 rounded-full border-2 border-brand/25 border-t-brand" />}
+      {!done && !active && <span className="inline-block h-[11px] w-[11px] rounded-full border-2 border-line" />}
       <span
         className={cn(
           "whitespace-nowrap text-[12.5px] font-medium",
           done && "text-verified-text",
-          active && "text-blue-700",
-          !done && !active && "text-slate-400",
+          active && "text-brand",
+          !done && !active && "text-ink-400",
         )}
       >
         {step.label}
@@ -45,8 +45,8 @@ export function AgentProgress({
 }) {
   return (
     <div className="gg-chrome pointer-events-none fixed inset-x-0 bottom-0 flex justify-center px-4 pb-[18px]">
-      <div className="pointer-events-auto w-full max-w-[740px] rounded-[14px] border border-slate-200 bg-white p-[13px_15px] shadow-[0_6px_28px_rgba(15,23,42,.10)]">
-        <div className="mb-2.5 flex items-center gap-[7px] text-[11.5px] font-semibold uppercase tracking-[.04em] text-slate-500">
+      <div className="pointer-events-auto w-full max-w-[740px] rounded-2xl border border-line bg-white/95 p-[13px_15px] shadow-floaty backdrop-blur-md">
+        <div className="mb-2.5 flex items-center gap-[7px] text-[11.5px] font-semibold uppercase tracking-[.04em] text-ink-500">
           <span className={cn("h-[7px] w-[7px] rounded-full bg-brand", running && "animate-pulse2")} />
           {running ? "GovGuide is working" : "GovGuide"}
         </div>

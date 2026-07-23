@@ -41,7 +41,7 @@ export function ModerationRow({
   onReject: () => void;
 }) {
   return (
-    <li className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 md:flex-row md:items-center">
+    <li className="flex flex-col gap-3 rounded-2xl border border-line bg-white p-4 shadow-card md:flex-row md:items-center">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[12px] font-semibold text-slate-600">
@@ -54,7 +54,7 @@ export function ModerationRow({
           </span>
         </div>
 
-        <div className="mt-1.5 text-sm font-semibold text-slate-900">{item.title}</div>
+        <div className="mt-1.5 text-sm font-semibold text-ink-900">{item.title}</div>
 
         {item.url && (
           <a

@@ -13,9 +13,24 @@ body {
 }
 
 body {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: #f7f7f5;
+  color: oklch(0.22 0.015 255);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Decorative blurred blobs used behind the Home hero (hidden on print). */
+.gg-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(110px);
+  pointer-events: none;
+}
+
+/* Small floating info cards beside the Home hero; hidden below 980px. */
+@media (max-width: 980px) {
+  .gg-float-card {
+    display: none !important;
+  }
 }
 
 /* Spinner used by agent-progress + gap banners */
