@@ -1,7 +1,12 @@
 /** DTO (snake_case wire) → domain view model (camelCase). The adapter boundary
  *  that keeps the UI decoupled from the backend's exact JSON (docs/11 §2). */
-import type { ActionPack } from "@/core/domain";
-import type { ActionPackDTO } from "./dto";
+import type {
+  ActionPack,
+  ModerationItem,
+  SourceType,
+  SourceVerificationStatus,
+} from "@/core/domain";
+import type { ActionPackDTO, ModerationItemDTO } from "./dto";
 
 const undef = (s: string | null | undefined): string | undefined => (s ? s : undefined);
 const num = (n: string | number): number => (typeof n === "number" ? n : Number(n));
@@ -42,5 +47,26 @@ export function toActionPack(dto: ActionPackDTO): ActionPack {
     })),
     fallback: dto.fallback,
     fallbackMessage: undef(dto.fallback_message),
+  };
+}
+
+export function toModerationItem(dto: ModerationItemDTO): ModerationItem {
+  return {
+    sourceId: dto.source_id,
+    title: dto.title,
+    url: undef(dto.url),
+    // The wire values are backend StrEnums; anything unexpected is surfaced as
+    // "portal"/"pending" rather than crashing the queue over one bad row.
+    sourceType: (["gazette", "circular", "portal", "experience"].includes(dto.source_type)
+      ? dto.source_type
+      : "portal") as SourceType,
+    retrievedDate: dto.retrieved_date,
+    publishedDate: undef(dto.published_date),
+    confidence: dto.confidence,
+    verificationStatus: (["verified", "auto_gathered", "pending", "rejected"].includes(
+      dto.verification_status,
+    )
+      ? dto.verification_status
+      : "pending") as SourceVerificationStatus,
   };
 }

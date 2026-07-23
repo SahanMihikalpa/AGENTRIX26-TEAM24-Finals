@@ -12,7 +12,7 @@ Splitting reads-by-key from semantic search keeps each agent's dependency narrow
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from app.domain.entities import (
     DistrictVariation,
@@ -23,6 +23,8 @@ from app.domain.entities import (
     Requirement,
     RetrievedChunk,
     Service,
+    ServiceCoverage,
+    ServiceMerge,
     ServiceVariant,
     Source,
     VerificationStatus,
@@ -66,6 +68,30 @@ class KnowledgeStore(Protocol):
 
     def get_service(self, service_id: int) -> Service | None: ...
 
+    def get_sources(self, source_ids: Sequence[int]) -> dict[int, Source]:
+        """The sources behind a set of facts, keyed by id (unknown ids omitted).
+
+        A6 needs this to judge an answer by the provenance of the rows it is about
+        to render, rather than by whatever retrieval happened to touch.
+        """
+        ...
+
+    def get_service_coverage(
+        self, service_ids: Sequence[int], *, min_source_confidence: float = 0.0
+    ) -> dict[int, ServiceCoverage]:
+        """How many *servable* requirements/fees/offices each service has.
+
+        Lets A2 prefer a service it can actually answer for. Facts whose source
+        falls below ``min_source_confidence`` are not counted, because the AD-8
+        gate would refuse to serve them anyway — pass the same threshold A6 uses,
+        or leave the default to count every documented row.
+
+        Ids with no facts are present in the result with a zeroed
+        :class:`ServiceCoverage`, so callers never have to distinguish "unknown id"
+        from "nothing on file".
+        """
+        ...
+
     def list_variants(self, service_id: int) -> list[ServiceVariant]: ...
 
     def get_requirements(self, variant_id: int) -> list[Requirement]: ...
@@ -102,8 +128,42 @@ class KnowledgeStore(Protocol):
         """
         ...
 
-    def get_service_ids_for_source(self, source_id: int) -> list[int]:
-        """The distinct services a source's chunks belong to (for cache invalidation)."""
+    # ── catalog curation (Stage 7) ───────────────────────────────
+    def merge_service(
+        self, duplicate_id: int, into_id: int, *, dry_run: bool = False
+    ) -> ServiceMerge | None:
+        """Fold a duplicate catalog entry into the service it duplicates.
+
+        The crawl creates one catalog row per web page, so cases a curated service
+        already covers as *variants* reappear as standalone, near-empty services —
+        and their names echo the citizen's wording well enough to win A2. Merging
+        repoints the duplicate's chunks to the parent (keeping the retrieved text)
+        and drops its own thin variants/requirements/fees in favour of the parent's
+        curated ones.
+
+        ``dry_run`` reports what *would* change without writing. Returns ``None``
+        if either id is unknown or they are the same service.
+        """
+        ...
+
+    # ── served answers (Stage 7) ─────────────────────────────────
+    def save_checklist(
+        self,
+        session_id: str,
+        answer: Mapping[str, Any],
+        *,
+        service_id: int | None = None,
+        variant_id: int | None = None,
+    ) -> int:
+        """Record an Action Pack that was served; return the new row id.
+
+        Durable and independent of the LangGraph checkpoint, which is pruned and
+        thread-scoped. ``session_id`` is the checkpointer's thread id.
+        """
+        ...
+
+    def get_checklist(self, session_id: str) -> dict[str, Any] | None:
+        """The most recent Action Pack served for ``session_id``, if any."""
         ...
 
 

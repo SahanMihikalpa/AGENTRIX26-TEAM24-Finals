@@ -23,6 +23,7 @@ tool) is deferred to Stage 7; ``estimated_cost_lkr`` is currently the sum of fee
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 from typing import Any
@@ -41,6 +42,8 @@ from app.domain.entities import (
     Office,
     Service,
     ServiceVariant,
+    Source,
+    VerificationStatus,
 )
 from app.domain.ports.knowledge import KnowledgeStore
 from app.domain.ports.llm import LLMProvider
@@ -52,14 +55,31 @@ _SYSTEM = (
     "documents, fees, amounts, or offices."
 )
 
-_FALLBACK_GAP = (
-    "We couldn't find verified information for this exact request yet. "
-    "Please contact the office below to confirm the requirements directly."
-)
+_FALLBACK_GAP = "We couldn't find verified information for this exact request yet."
 _FALLBACK_LOW_CONFIDENCE = (
     "We found a related source but couldn't verify it with enough confidence to "
-    "give you a checklist. Please confirm with the office below before relying on it."
+    "give you a checklist."
 )
+# Contact guidance + first step adapt to whether we actually have an office to show.
+_CONTACT_OFFICE = " Please contact the office below to confirm the requirements directly."
+_CONTACT_GENERIC = (
+    " Please contact the relevant government department to confirm the requirements directly."
+)
+_STEP_OFFICE = "Contact the office below to confirm the exact requirements."
+_STEP_GENERIC = "Contact the relevant government department to confirm the exact requirements."
+
+
+@dataclass(frozen=True, slots=True)
+class _Facts:
+    """Everything the pack is made of, read once so the gate can judge it."""
+
+    service: Service | None
+    variant: ServiceVariant | None
+    documents: list[DocumentItem]
+    fees: list[FeeLine]
+    office: ActionPackOffice | None
+    backing_sources: list[Source]
+    variants: list[ServiceVariant] = field(default_factory=list)
 
 
 class ActionPackAgent:
@@ -77,53 +97,103 @@ class ActionPackAgent:
         self._confidence_threshold = confidence_threshold
 
     def __call__(self, state: GraphState) -> dict[str, Any]:
-        gate_message = self._gate(state)
+        # The facts are assembled first because the gate is a judgement *about
+        # them*. This costs only store reads — the LLM is still never called for a
+        # pack that will not be served, which is what "the gate is first" protects.
+        facts = self._assemble_facts(state)
+        gate_message = self._gate(state, facts.backing_sources)
         if gate_message is not None:
             pack = self._fallback_pack(state, gate_message)
         else:
-            pack = self._build_pack(state)
+            pack = self._build_pack(state, facts)
 
         answer = action_pack_to_state(pack)
         return {"answer": answer, "citations": answer["citations"]}
 
+    # ── fact assembly (deterministic, grounded) ──────────────────
+    def _assemble_facts(self, state: GraphState) -> _Facts:
+        """Read the rows the pack would render, plus the sources behind them."""
+        service_id = state["service_id"]
+        service = self._store.get_service(service_id) if service_id is not None else None
+        if service is None or service_id is None:
+            return _Facts(None, None, [], [], None, [])
+
+        variants = self._store.list_variants(service_id)
+        variant = self._pick_variant(state["variant_id"], variants)
+        documents = self._documents(variant)
+        fees = self._fees(variant)
+        office = self._office(service_id, state["slots"].get("district"))
+
+        source_ids = [
+            source_id
+            for source_id in (
+                *(doc.source_id for doc in documents),
+                *(fee.source_id for fee in fees),
+            )
+            if source_id is not None
+        ]
+        sources = self._store.get_sources(source_ids)
+        # Preserve first-seen order so citations read in the order the facts do.
+        backing: list[Source] = []
+        seen: set[int] = set()
+        for source_id in source_ids:
+            source = sources.get(source_id)
+            if source is not None and source_id not in seen:
+                seen.add(source_id)
+                backing.append(source)
+        return _Facts(service, variant, documents, fees, office, backing, variants)
+
     # ── confidence gate (AD-8) ───────────────────────────────────
-    def _gate(self, state: GraphState) -> str | None:
-        """Return a fallback message if the pack must NOT be rendered, else ``None``."""
+    def _gate(self, state: GraphState, backing: list[Source]) -> str | None:
+        """Return a fallback message if the pack must NOT be rendered, else ``None``.
+
+        The gate judges the pack by **the sources behind the rows it is about to
+        render**, not by whatever A4 happened to retrieve. Those are different
+        things: A6 assembles documents and fees deterministically from the store,
+        each carrying its own ``source_id``, while retrieval returns the nearest
+        chunks — which may include crawled text that contributed nothing to the
+        answer. Judging on retrieval meant one stray low-confidence chunk could
+        suppress a checklist built entirely from verified rows.
+
+        This is not a loosening. Nothing unverified is served as fact without the
+        pending label, and an answer with no sourced rows behind it at all is
+        refused outright — which the old gate did not catch.
+        """
         if state["grade"] != Grade.SUFFICIENT.value:
             return _FALLBACK_GAP
-        retrieved = state["retrieved"]
+        if not backing:
+            # Nothing sourced to hand over: an "answer" here would be an empty
+            # checklist wearing a verified badge.
+            return _FALLBACK_GAP
         has_unverified = any(
-            chunk["verification_status"] != "verified" for chunk in retrieved
+            source.verification_status != VerificationStatus.VERIFIED for source in backing
         )
-        if has_unverified and state["answer_confidence"] < self._confidence_threshold:
+        weakest = min(source.confidence for source in backing)
+        if has_unverified and weakest < self._confidence_threshold:
             return _FALLBACK_LOW_CONFIDENCE
         return None
 
     # ── served pack ──────────────────────────────────────────────
-    def _build_pack(self, state: GraphState) -> ActionPack:
-        service_id = state["service_id"]
-        service = self._store.get_service(service_id) if service_id is not None else None
-        if service is None:  # defensive: lost the service somehow → fall back
+    def _build_pack(self, state: GraphState, facts: _Facts) -> ActionPack:
+        if facts.service is None:  # defensive: routing should never bring us here
             return self._fallback_pack(state, _FALLBACK_GAP)
 
-        variants = self._store.list_variants(service_id)  # type: ignore[arg-type]
-        variant = self._pick_variant(state["variant_id"], variants)
-
-        documents = self._documents(variant)
-        fees = self._fees(variant)
-        office = self._office(service_id, state["slots"].get("district"))
-        estimated_cost = sum((line.amount_lkr for line in fees), Decimal("0"))
-
+        estimated_cost = sum((line.amount_lkr for line in facts.fees), Decimal("0"))
         return ActionPack(
-            service_label=self._service_label(service, variant, variants),
+            service_label=self._service_label(facts.service, facts.variant, facts.variants),
             district=state["slots"].get("district"),
-            documents=tuple(documents),
-            fees=tuple(fees),
-            office=office,
-            steps=tuple(self._steps(service, variant, documents, fees, office)),
+            documents=tuple(facts.documents),
+            fees=tuple(facts.fees),
+            office=facts.office,
+            steps=tuple(
+                self._steps(facts.service, facts.variant, facts.documents, facts.fees, facts.office)
+            ),
             estimated_cost_lkr=estimated_cost,
-            verification=self._verification(state["retrieved"]),
-            citations=tuple(self._citations(state["retrieved"])),
+            # Both label and citations describe the rows above, so both come from
+            # the sources backing them — matching the UI's promise that "every
+            # requirement above is based on these official sources".
+            verification=self._verification(facts.backing_sources),
+            citations=tuple(self._source_citations(facts.backing_sources)),
         )
 
     def _fallback_pack(self, state: GraphState, message: str) -> ActionPack:
@@ -134,18 +204,26 @@ class ActionPackAgent:
             if service_id is not None
             else None
         )
+        # Only cite chunks that are actually about the identified service. When the
+        # service is unknown (a true gap, e.g. an unseen tax query), A4's closest
+        # chunks belong to *other* services — citing them would mislead the citizen.
+        citations: list[Citation] = (
+            self._citations(state["retrieved"]) if service_id is not None else []
+        )
+        contact = _CONTACT_OFFICE if office is not None else _CONTACT_GENERIC
         return ActionPack(
             service_label=service.name_en if service is not None else "Your request",
             district=state["slots"].get("district"),
             documents=(),
             fees=(),
             office=office,
-            steps=("Contact the office below to confirm the exact requirements.",),
+            steps=(_STEP_OFFICE if office is not None else _STEP_GENERIC,),
             estimated_cost_lkr=Decimal("0"),
-            verification=self._verification(state["retrieved"]),
-            citations=tuple(self._citations(state["retrieved"])),
+            # A fallback never claims a verified answer for this request.
+            verification=ActionPackVerification.NEWLY_GATHERED_PENDING_VERIFICATION,
+            citations=tuple(citations),
             fallback=True,
-            fallback_message=message,
+            fallback_message=message + contact,
         )
 
     # ── fact assembly (deterministic, grounded) ──────────────────
@@ -255,9 +333,10 @@ class ActionPackAgent:
 
     # ── provenance & labelling ───────────────────────────────────
     @staticmethod
-    def _verification(retrieved: list[dict[str, Any]]) -> ActionPackVerification:
-        all_verified = retrieved and all(
-            chunk["verification_status"] == "verified" for chunk in retrieved
+    def _verification(backing: list[Source]) -> ActionPackVerification:
+        """Label the pack by the provenance of the rows it actually renders."""
+        all_verified = backing and all(
+            source.verification_status == VerificationStatus.VERIFIED for source in backing
         )
         return (
             ActionPackVerification.VERIFIED
@@ -266,7 +345,22 @@ class ActionPackAgent:
         )
 
     @staticmethod
+    def _source_citations(backing: list[Source]) -> list[Citation]:
+        """Cite the sources behind the documents and fees shown, in that order."""
+        return [
+            Citation(
+                title=source.title,
+                url=source.url,
+                last_verified=source.retrieved_date,
+                source_id=source.id,
+            )
+            for source in backing
+        ]
+
+    @staticmethod
     def _citations(retrieved: list[dict[str, Any]]) -> list[Citation]:
+        """Citations drawn from retrieved evidence — used only by the fallback pack,
+        which has no rendered rows of its own to point at."""
         seen: set[int | None] = set()
         citations: list[Citation] = []
         for chunk in retrieved:

@@ -59,8 +59,15 @@ class Settings(BaseSettings):
     confidence_threshold: float = 0.6
     max_acquisition_loops: int = 2
 
-    # ── LLM gateway (rate limiting) ────────────────────────────────
+    # ── LLM gateway (outbound provider pacing) ─────────────────────
     llm_rate_limit_rpm: int = 15
+
+    # ── HTTP rate limiting (inbound, per client) ───────────────────
+    # The LLM gateway paces outbound calls but never refuses them, so an
+    # unbounded flood of /api/chat requests would still drain the day's free-tier
+    # quota. These caps reject the excess at the edge instead (see api/rate_limit).
+    chat_rate_limit_rpm: int = 10  # POST /api/chat — the quota spender
+    api_rate_limit_rpm: int = 60  # every other /api route
 
     # ── Observability ──────────────────────────────────────────────
     langsmith_api_key: str | None = None

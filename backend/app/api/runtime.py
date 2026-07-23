@@ -10,7 +10,9 @@ call happen on the first real request.
 from __future__ import annotations
 
 import sqlite3
+import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from fastapi import Request
@@ -28,7 +30,6 @@ from app.application.feedback import ExperienceReportIntake
 from app.application.graph import GraphDependencies
 from app.application.graph.builder import build_graph
 from app.application.moderation import ModerationService
-from app.domain.ports.cache import AnswerCache
 from app.domain.ports.embeddings import EmbeddingProvider
 from app.domain.ports.llm import LLMProvider
 from app.domain.ports.web_search import WebSearch
@@ -46,7 +47,7 @@ class AppRuntime:
 
     graph: Any  # CompiledStateGraph
     store: ChromaSqliteStore
-    cache: AnswerCache
+    cache: InMemoryAnswerCache
     settings: Settings
     experience_intake: ExperienceReportIntake  # POST /api/experience-reports
     moderation: ModerationService  # /api/moderation/*
@@ -61,6 +62,8 @@ def build_runtime(settings: Settings) -> AppRuntime:
     )
     llm: LLMProvider = _build_llm(settings)
     embedder: EmbeddingProvider = BgeEmbeddingProvider(settings.embedding_model)
+    # One cache instance, shared by the graph (which reads/writes/invalidates it)
+    # and the moderation service (which clears it when a source's trust changes).
     cache = InMemoryAnswerCache()
     deps = GraphDependencies(
         llm=llm,
@@ -71,10 +74,10 @@ def build_runtime(settings: Settings) -> AppRuntime:
             settings.source_pool_dir, parser=PyMuPdfSourceParser()
         ),
         web_search=_build_web_search(settings),
+        answer_cache=cache,
         confidence_threshold=settings.confidence_threshold,
         max_acquisition_loops=settings.max_acquisition_loops,
         web_allowlist=settings.web_allowlist_domains,
-        cache=cache,  # AD-12 short-circuit + per-service invalidation on B3 upsert
     )
     graph = build_graph(deps, checkpointer=_build_checkpointer(settings))
     _log.info("Runtime built (graph compiled, checkpointer mounted)")
@@ -86,8 +89,7 @@ def build_runtime(settings: Settings) -> AppRuntime:
         # The feedback path reuses the same B2/B3 agents (over the same store +
         # embedder), so citizen reports grow the KB exactly like the gap loop.
         experience_intake=ExperienceReportIntake(store, llm, embedder),
-        # Moderation shares the cache so promote/reject invalidate stale answers.
-        moderation=ModerationService(store, cache),
+        moderation=ModerationService(store, cache=cache),
     )
 
 
@@ -127,8 +129,45 @@ def _build_web_search(settings: Settings) -> WebSearch:
 
 
 def _build_checkpointer(settings: Settings) -> SqliteSaver:
-    """A persistent ``SqliteSaver`` so the A3 interview resumes across requests (AD-3)."""
-    conn = sqlite3.connect(
-        str(settings.data_dir / "checkpoints.sqlite3"), check_same_thread=False
-    )
+    """A persistent ``SqliteSaver`` so the A3 interview resumes across requests (AD-3).
+
+    A corrupt checkpoint file is quarantined rather than tolerated. SQLite in WAL
+    mode can be left torn if the process dies mid-write — a container restart is
+    enough — and the resulting "file is not a database" would otherwise fail
+    *every* chat request forever, because the saver is read before the graph runs.
+
+    Checkpoints are transient conversation state: losing them ends in-flight A3
+    interviews and nothing else (served Action Packs live in ``checklist``, and the
+    knowledge base is a separate database). So the safe move is to step aside and
+    keep serving. The bad file is **renamed, never deleted**, so a post-mortem is
+    still possible.
+    """
+    path = settings.data_dir / "checkpoints.sqlite3"
+    if path.exists() and not _is_readable_sqlite(path):
+        quarantine = path.with_suffix(f".corrupt-{int(time.time())}.sqlite3")
+        path.replace(quarantine)
+        for suffix in ("-wal", "-shm"):
+            sidecar = path.with_name(path.name + suffix)
+            if sidecar.exists():
+                sidecar.unlink()
+        _log.error(
+            "Checkpoint database was unreadable; moved it to %s and started a fresh "
+            "one. In-flight clarification interviews are lost; nothing else is.",
+            quarantine.name,
+        )
+
+    conn = sqlite3.connect(str(path), check_same_thread=False)
     return SqliteSaver(conn)
+
+
+def _is_readable_sqlite(path: Path) -> bool:
+    """True when the file opens as SQLite and its schema can be read."""
+    try:
+        conn = sqlite3.connect(str(path))
+        try:
+            conn.execute("SELECT COUNT(*) FROM sqlite_master").fetchone()
+        finally:
+            conn.close()
+    except sqlite3.DatabaseError:
+        return False
+    return True

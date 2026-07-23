@@ -11,12 +11,13 @@ ISO strings; enums by value.
 
 from __future__ import annotations
 
+import json
 import re
 import sqlite3
 import threading
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -34,11 +35,16 @@ from app.domain.entities import (
     Requirement,
     RetrievedChunk,
     Service,
+    ServiceCoverage,
+    ServiceMerge,
     ServiceVariant,
     Source,
     SourceType,
     VerificationStatus,
 )
+from app.infrastructure.logging import get_logger
+
+_log = get_logger(__name__)
 
 _COLLECTION = "kb_chunks"
 _NO_SERVICE = -1  # Chroma metadata can't hold None; sentinel for "chunk has no service"
@@ -64,8 +70,51 @@ class ChromaSqliteStore:
     def _init_schema(self) -> None:
         ddl = (Path(__file__).parent / "schema.sql").read_text(encoding="utf-8")
         with self._lock:
+            self._retire_legacy_tables()
             self._conn.executescript(ddl)
             self._conn.commit()
+
+    def _retire_legacy_tables(self) -> None:
+        """Drop the pre-Stage-7 conversation tables so the DDL can be reapplied.
+
+        ``CREATE TABLE IF NOT EXISTS`` cannot reshape an existing table, so an
+        older database would keep ``checklist`` with its integer ``session_id``
+        foreign key into ``session`` — incompatible with the LangGraph thread ids
+        we now store. ``session``/``session_message`` are dropped outright: the
+        checkpointer supersedes them.
+
+        Only **empty** tables are dropped. A populated one is left alone and
+        reported, so this can never silently destroy data; the caller sees the
+        warning and can migrate deliberately.
+        """
+        for table in ("session_message", "checklist", "session"):
+            if not self._table_exists(table):
+                continue
+            if table == "checklist" and self._column_type(table, "session_id") == "TEXT":
+                continue  # already the current shape
+            rows = self._conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            if rows:
+                _log.warning(
+                    "Legacy table %r holds %d row(s); leaving it in place. Migrate or "
+                    "drop it manually to complete the schema upgrade.",
+                    table,
+                    rows,
+                )
+                continue
+            self._conn.execute(f"DROP TABLE {table}")
+            _log.info("Dropped empty legacy table %r", table)
+
+    def _table_exists(self, name: str) -> bool:
+        row = self._conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (name,)
+        ).fetchone()
+        return row is not None
+
+    def _column_type(self, table: str, column: str) -> str | None:
+        for row in self._conn.execute(f"PRAGMA table_info({table})"):
+            if row["name"] == column:
+                return str(row["type"]).upper()
+        return None
 
     # ── catalog writes ───────────────────────────────────────────
     def add_service(self, service: Service) -> Service:
@@ -207,12 +256,14 @@ class ChromaSqliteStore:
         """Keyword-overlap service search (lexical, ranked).
 
         The catalog is small, so we score every service by how many query keywords
-        appear in its name/slug/description and return the best matches. This is far
-        more robust to natural-language phrasing than the old whole-query ``LIKE``,
-        which only matched when the *entire* question was a literal substring of a
-        field — so questions like "transfer my late father's land to my name" found
-        nothing and were wrongly sent down the gap path. With no usable keywords we
-        return the catalog head so callers still get candidates.
+        match a **whole word** in its name/slug/description and return the best matches.
+        This is far more robust to natural-language phrasing than the old whole-query
+        ``LIKE`` (which only matched when the *entire* question was a literal substring,
+        so "transfer my late father's land to my name" found nothing). Matching is
+        word-boundary, not substring, and generic government words are dropped
+        (:data:`_SERVICE_STOPWORDS`) — together these stop false positives such as
+        "register with UGC" matching "Land Deed Transfer & Registration". With no usable
+        keywords we return the catalog head so callers still get candidates.
         """
         services = [_row_to_service(row) for row in self._conn.execute("SELECT * FROM service")]
         keywords = _keywords(query)
@@ -220,16 +271,71 @@ class ChromaSqliteStore:
             return services[:limit]
         scored: list[tuple[int, Service]] = []
         for service in services:
-            haystack = f"{service.name_en} {service.slug} {service.description}".lower()
-            score = sum(1 for keyword in keywords if keyword in haystack)
+            tokens = set(
+                _TOKEN_RE.findall(f"{service.name_en} {service.slug} {service.description}".lower())
+            )
+            score = sum(1 for keyword in keywords if keyword in tokens)
             if score:
                 scored.append((score, service))
-        scored.sort(key=lambda item: item[0], reverse=True)  # most keyword hits first (stable)
+        if not scored:
+            return []
+        # Most keyword hits first; ties broken by how much documented fact the
+        # service has. The crawl creates thin entries whose names echo the query
+        # almost verbatim ("Amendment of NIC"), and those tie with the curated
+        # parent they duplicate — this puts the answerable one first.
+        coverage = self.get_service_coverage(
+            [s.id for _, s in scored if s.id is not None]
+        )
+        scored.sort(
+            key=lambda item: (
+                item[0],
+                coverage.get(item[1].id or -1, ServiceCoverage()).score,
+            ),
+            reverse=True,
+        )
         return [service for _, service in scored[:limit]]
 
     def get_service(self, service_id: int) -> Service | None:
         row = self._conn.execute("SELECT * FROM service WHERE id = ?", (service_id,)).fetchone()
         return _row_to_service(row) if row is not None else None
+
+    def get_service_coverage(
+        self, service_ids: Sequence[int], *, min_source_confidence: float = 0.0
+    ) -> dict[int, ServiceCoverage]:
+        ids = list(dict.fromkeys(service_ids))  # de-dupe, keep order
+        if not ids:
+            return {}
+        placeholders = ",".join("?" for _ in ids)
+        # Requirements and fees are joined to their source so the confidence gate
+        # can be applied here: a fact A6 would refuse to serve is not coverage.
+        rows = self._conn.execute(
+            f"""
+            SELECT s.id AS service_id,
+                   (SELECT COUNT(*) FROM requirement r
+                      JOIN service_variant v ON r.variant_id = v.id
+                      JOIN source src ON r.source_id = src.id
+                     WHERE v.service_id = s.id AND src.confidence >= ?) AS requirements,
+                   (SELECT COUNT(*) FROM fee f
+                      JOIN service_variant v ON f.variant_id = v.id
+                      JOIN source src ON f.source_id = src.id
+                     WHERE v.service_id = s.id AND src.confidence >= ?) AS fees,
+                   (SELECT COUNT(*) FROM service_office so
+                     WHERE so.service_id = s.id) AS offices
+              FROM service s
+             WHERE s.id IN ({placeholders})
+            """,
+            (min_source_confidence, min_source_confidence, *ids),
+        ).fetchall()
+        found = {
+            int(row["service_id"]): ServiceCoverage(
+                requirements=int(row["requirements"]),
+                fees=int(row["fees"]),
+                offices=int(row["offices"]),
+            )
+            for row in rows
+        }
+        # Unknown ids still get an entry, so callers never branch on absence.
+        return {service_id: found.get(service_id, ServiceCoverage()) for service_id in ids}
 
     def list_variants(self, service_id: int) -> list[ServiceVariant]:
         rows = self._conn.execute(
@@ -262,6 +368,148 @@ class ChromaSqliteStore:
         return [_row_to_office(row) for row in rows]
 
     # ── feedback + moderation ────────────────────────────────────
+    # ── catalog curation ─────────────────────────────────────────
+    def merge_service(
+        self, duplicate_id: int, into_id: int, *, dry_run: bool = False
+    ) -> ServiceMerge | None:
+        duplicate = self.get_service(duplicate_id)
+        parent = self.get_service(into_id)
+        if duplicate is None or parent is None or duplicate_id == into_id:
+            return None
+
+        variant_ids = [
+            int(row["id"])
+            for row in self._conn.execute(
+                "SELECT id FROM service_variant WHERE service_id = ?", (duplicate_id,)
+            )
+        ]
+        outcome = ServiceMerge(
+            duplicate_id=duplicate_id,
+            duplicate_name=duplicate.name_en,
+            parent_id=into_id,
+            parent_name=parent.name_en,
+            chunks_moved=self._count("kb_chunk", "service_id", duplicate_id),
+            variants_dropped=len(variant_ids),
+            requirements_dropped=self._count_for_variants("requirement", variant_ids),
+            fees_dropped=self._count_for_variants("fee", variant_ids),
+            offices_relinked=self._count("service_office", "service_id", duplicate_id),
+            district_variations_relinked=self._count(
+                "district_variation", "service_id", duplicate_id
+            ),
+        )
+        if dry_run:
+            return outcome
+
+        chunk_refs = [
+            str(row["vector_ref"])
+            for row in self._conn.execute(
+                "SELECT vector_ref FROM kb_chunk WHERE service_id = ? AND vector_ref IS NOT NULL",
+                (duplicate_id,),
+            )
+        ]
+        with self._lock:
+            # Keep the crawled text — it is the part with real retrieval value —
+            # and hand it to the parent so A4 still finds it.
+            self._conn.execute(
+                "UPDATE kb_chunk SET service_id = ? WHERE service_id = ?",
+                (into_id, duplicate_id),
+            )
+            # Offices and district notes are service-level facts worth keeping;
+            # INSERT OR IGNORE because the parent may already link the same office.
+            self._conn.execute(
+                "INSERT OR IGNORE INTO service_office (service_id, office_id)"
+                " SELECT ?, office_id FROM service_office WHERE service_id = ?",
+                (into_id, duplicate_id),
+            )
+            self._conn.execute(
+                "DELETE FROM service_office WHERE service_id = ?", (duplicate_id,)
+            )
+            self._conn.execute(
+                "UPDATE district_variation SET service_id = ? WHERE service_id = ?",
+                (into_id, duplicate_id),
+            )
+            # The duplicate's own variants are auto-extracted and thin; the parent
+            # already covers these cases with curated facts, so they go.
+            if variant_ids:
+                marks = ",".join("?" for _ in variant_ids)
+                params = tuple(variant_ids)
+                self._conn.execute(
+                    f"DELETE FROM requirement WHERE variant_id IN ({marks})", params
+                )
+                self._conn.execute(
+                    f"DELETE FROM fee WHERE variant_id IN ({marks})", params
+                )
+                self._conn.execute(
+                    f"DELETE FROM service_variant WHERE id IN ({marks})", params
+                )
+            self._conn.execute("DELETE FROM service WHERE id = ?", (duplicate_id,))
+            self._conn.commit()
+
+        # Chroma carries its own copy of service_id for metadata filtering; if it
+        # is not updated the moved chunks become unfindable under the parent.
+        if chunk_refs:
+            self._collection.update(
+                ids=chunk_refs, metadatas=[{"service_id": into_id} for _ in chunk_refs]
+            )
+        _log.info(
+            "Merged service %s (%r) into %s (%r): %d chunk(s) moved",
+            duplicate_id,
+            duplicate.name_en,
+            into_id,
+            parent.name_en,
+            outcome.chunks_moved,
+        )
+        return outcome
+
+    def _count(self, table: str, column: str, value: int) -> int:
+        row = self._conn.execute(
+            f"SELECT COUNT(*) FROM {table} WHERE {column} = ?", (value,)
+        ).fetchone()
+        return int(row[0])
+
+    def _count_for_variants(self, table: str, variant_ids: list[int]) -> int:
+        if not variant_ids:
+            return 0
+        marks = ",".join("?" for _ in variant_ids)
+        row = self._conn.execute(
+            f"SELECT COUNT(*) FROM {table} WHERE variant_id IN ({marks})",
+            tuple(variant_ids),
+        ).fetchone()
+        return int(row[0])
+
+    # ── served answers ───────────────────────────────────────────
+    def save_checklist(
+        self,
+        session_id: str,
+        answer: Mapping[str, Any],
+        *,
+        service_id: int | None = None,
+        variant_id: int | None = None,
+    ) -> int:
+        return self._insert(
+            "INSERT INTO checklist"
+            " (session_id, service_id, variant_id, payload_json, created_at)"
+            " VALUES (?,?,?,?,?)",
+            (
+                session_id,
+                service_id,
+                variant_id,
+                json.dumps(answer, ensure_ascii=False),
+                datetime.now(UTC).isoformat(),
+            ),
+        )
+
+    def get_checklist(self, session_id: str) -> dict[str, Any] | None:
+        row = self._conn.execute(
+            "SELECT payload_json FROM checklist WHERE session_id = ?"
+            " ORDER BY id DESC LIMIT 1",
+            (session_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        payload: dict[str, Any] = json.loads(row["payload_json"])
+        return payload
+
     def add_experience_report(self, report: ExperienceReport) -> ExperienceReport:
         new_id = self._insert(
             "INSERT INTO experience_report"
@@ -315,14 +563,6 @@ class ChromaSqliteStore:
             self._collection.delete(ids=vector_refs)
         return len(rows)
 
-    def get_service_ids_for_source(self, source_id: int) -> list[int]:
-        rows = self._conn.execute(
-            "SELECT DISTINCT service_id FROM kb_chunk"
-            " WHERE source_id = ? AND service_id IS NOT NULL",
-            (source_id,),
-        ).fetchall()
-        return [int(row["service_id"]) for row in rows]
-
     # ── semantic search (Retriever) ──────────────────────────────
     def search(
         self,
@@ -364,6 +604,9 @@ class ChromaSqliteStore:
             raise RuntimeError("INSERT did not return a row id")
         return row_id
 
+    def get_sources(self, source_ids: Sequence[int]) -> dict[int, Source]:
+        return self._get_sources(set(source_ids))
+
     def _get_sources(self, source_ids: set[int]) -> dict[int, Source]:
         if not source_ids:
             return {}
@@ -374,10 +617,18 @@ class ChromaSqliteStore:
         return {int(row["id"]): _row_to_source(row) for row in rows}
 
 
+_TOKEN_RE = re.compile(r"[a-z0-9]+")
 _SERVICE_STOPWORDS = frozenset({
+    # articles / pronouns / fillers
     "a", "an", "and", "are", "at", "do", "for", "from", "get", "how", "i", "in", "into",
-    "is", "it", "me", "my", "need", "new", "obtain", "of", "on", "or", "please", "the",
-    "to", "want", "with", "you", "your",
+    "is", "it", "me", "my", "need", "of", "on", "or", "please", "the", "to", "want",
+    "with", "you", "your",
+    # generic government-process words that occur across almost every service, so they are
+    # poor discriminators (the specific nouns — "land", "deed", "nic" — carry the match).
+    # Dropping them stops e.g. "register with UGC" from matching "...& Registration".
+    "apply", "application", "applying", "new", "obtain", "obtaining", "register",
+    "registered", "registering", "registration", "request", "requesting", "service",
+    "services", "department",
 })
 
 
@@ -385,7 +636,7 @@ def _keywords(query: str) -> list[str]:
     """Distinct, meaningful lowercase tokens from a query (for service matching)."""
     keywords: list[str] = []
     seen: set[str] = set()
-    for token in re.findall(r"[a-z0-9]+", query.lower()):
+    for token in _TOKEN_RE.findall(query.lower()):
         if len(token) >= 3 and token not in _SERVICE_STOPWORDS and token not in seen:
             seen.add(token)
             keywords.append(token)

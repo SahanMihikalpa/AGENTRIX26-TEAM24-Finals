@@ -79,6 +79,31 @@ def test_find_services_keyword_overlap_matches_natural_language(store: ChromaSql
     assert store.find_services("renew my passport urgently") == []
 
 
+def test_find_services_rejects_generic_word_false_positives(store: ChromaSqliteStore) -> None:
+    store.add_service(
+        Service(
+            name_en="Land Deed Transfer & Registration",
+            slug="land-deed-transfer",
+            category="Land & Property",
+            description="Registering a deed that transfers ownership of land",
+        )
+    )
+    store.add_service(
+        Service(
+            name_en="National Identity Card Issuance",
+            slug="nic-issuance",
+            category="Civil Registration & Identity",
+            description="Obtain a NIC",
+        )
+    )
+    # A UGC/university request shares only the generic word "register"/"registration"
+    # with the Land Deed name — it must NOT match (→ the caller routes to the gap path),
+    # not return a land deed.
+    assert store.find_services("register with UGC to apply to university") == []
+    # but the discriminative nouns still resolve the right service
+    assert store.find_services("register my land deed")[0].slug == "land-deed-transfer"
+
+
 def test_variant_requirement_fee_roundtrip(store: ChromaSqliteStore) -> None:
     source = _add_source(store)
     service = store.add_service(
@@ -271,23 +296,3 @@ def test_delete_chunks_for_source_quarantines(
     assert store.search(embedder.embed_query("business registration"), top_k=5) == []
     # ... but the source row is kept so dedup still blocks re-ingestion
     assert store.source_exists(url=source.url, content_hash="a")
-
-
-def test_get_service_ids_for_source(store: ChromaSqliteStore, embedder) -> None:
-    source = _add_source_with_status(
-        store, VerificationStatus.AUTO_GATHERED, title="A", content_hash="a"
-    )
-    service = store.add_service(Service(name_en="X", slug="x", category="c", description="d"))
-    assert source.id is not None and service.id is not None
-    store.upsert_chunks(
-        [KBChunk(source_id=source.id, service_id=service.id, content="biz reg", chunk_index=0)],
-        embedder.embed_documents(["biz reg"]),
-    )
-    assert store.get_service_ids_for_source(source.id) == [service.id]
-
-    # a source with no chunks maps to no services
-    bare = _add_source_with_status(
-        store, VerificationStatus.AUTO_GATHERED, title="B", content_hash="b"
-    )
-    assert bare.id is not None
-    assert store.get_service_ids_for_source(bare.id) == []

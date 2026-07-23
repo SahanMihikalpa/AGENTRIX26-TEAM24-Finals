@@ -25,9 +25,7 @@ from app.application.agents.schemas import (
 from app.application.graph import GraphDependencies, new_state
 from app.application.graph.builder import build_graph
 from app.domain.entities import SourceType
-from app.domain.ports.cache import AnswerCache
 from app.domain.ports.source_pool import PooledDocument
-from app.infrastructure.cache import InMemoryAnswerCache
 from tests.application.conftest import (
     DeterministicEmbedder,
     FakeSourcePool,
@@ -43,7 +41,6 @@ def _deps(
     *,
     source_pool: FakeSourcePool | None = None,
     max_loops: int = 2,
-    cache: AnswerCache | None = None,
 ) -> GraphDependencies:
     return GraphDependencies(
         llm=llm,
@@ -54,7 +51,6 @@ def _deps(
         web_allowlist=["gov.lk"],
         max_acquisition_loops=max_loops,
         grader_sufficient_above=0.4,  # robust against DeterministicEmbedder variance
-        cache=cache,
     )
 
 
@@ -194,57 +190,3 @@ def test_clarification_interrupts_then_resumes(
     answer = result["answer"]
     assert answer["fallback"] is False
     assert answer["service_label"] == "Land Deed Transfer (inheritance)"
-
-
-# ── AD-12 cache (Stage 7b) ───────────────────────────────────────
-def _steps_calls(llm: ScriptedLLM) -> int:
-    return sum(1 for _, name in llm.calls if name == "ActionSteps")
-
-
-def test_cache_hit_short_circuits_generation(
-    kb: SeededKB, embedder: DeterministicEmbedder
-) -> None:
-    cache = InMemoryAnswerCache()
-    llm = ScriptedLLM(
-        structured={
-            IntentExtraction: IntentExtraction(
-                normalized_query="land deed transfer", service_guess="land_deed_transfer"
-            ),
-            ActionSteps: ActionSteps(steps=["Collect documents"]),
-        }
-    )
-    app = build_graph(_deps(kb, embedder, llm, cache=cache), checkpointer=MemorySaver())
-
-    state1 = new_state("h1", "transfer inherited land")
-    state1["slots"] = {"condition": "inheritance", "district": "Galle"}
-    app.invoke(state1, _config("h1"))
-    assert _steps_calls(llm) == 1  # generated once, now cached
-
-    state2 = new_state("h2", "transfer inherited land")
-    state2["slots"] = {"condition": "inheritance", "district": "Galle"}
-    result = app.invoke(state2, _config("h2"))
-
-    assert _steps_calls(llm) == 1  # A6 NOT re-run → answer served from the cache
-    assert result["answer"]["service_label"] == "Land Deed Transfer (inheritance)"
-    assert len(cache) == 1
-
-
-def test_fallback_answers_are_not_cached(
-    kb: SeededKB, embedder: DeterministicEmbedder
-) -> None:
-    cache = InMemoryAnswerCache()
-    llm = ScriptedLLM(
-        structured={
-            IntentExtraction: IntentExtraction(
-                normalized_query="dragon licence", service_guess="dragon_licence"
-            )
-        }
-    )
-    app = build_graph(
-        _deps(kb, embedder, llm, max_loops=1, cache=cache), checkpointer=MemorySaver()
-    )
-
-    result = app.invoke(new_state("f1", "I need a dragon licence"), _config("f1"))
-
-    assert result["answer"]["fallback"] is True
-    assert len(cache) == 0  # never cache a fallback → the next try can still succeed

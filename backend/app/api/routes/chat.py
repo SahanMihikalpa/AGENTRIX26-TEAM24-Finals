@@ -40,9 +40,16 @@ async def chat(request: ChatRequest, runtime: RuntimeDep) -> StreamingResponse:
 
 @router.get("/sessions/{session_id}/action-pack", response_model=ActionPackDTO)
 async def get_action_pack(session_id: str, runtime: RuntimeDep) -> ActionPackDTO:
-    """Fetch the final Action Pack for a session (fallback to the stream)."""
+    """Fetch the final Action Pack for a session (fallback to the stream).
+
+    The live checkpoint is the fast path; the persisted ``checklist`` row is the
+    durable one, so a link to an Action Pack keeps working after the thread's
+    checkpoint has been pruned.
+    """
     snapshot = runtime.graph.get_state(thread_config(session_id))
     answer = snapshot.values.get("answer") if snapshot.values else None
+    if not answer:
+        answer = runtime.store.get_checklist(session_id)
     if not answer:
         raise HTTPException(status_code=404, detail="no action pack for this session")
     return ActionPackDTO.model_validate(answer)

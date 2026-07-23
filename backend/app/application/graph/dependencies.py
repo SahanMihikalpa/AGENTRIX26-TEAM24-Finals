@@ -33,9 +33,9 @@ class GraphDependencies:
     retriever: Retriever
     source_pool: SourcePool
     web_search: WebSearch | None = None
-    # AD-12 query→answer cache. Optional: when ``None`` the cache nodes are no-ops,
-    # so the graph behaves exactly as before (tests without a cache are unaffected).
-    cache: AnswerCache | None = None
+    # Optional: when absent the graph simply never short-circuits (AD-12 is an
+    # optimization, not correctness), which keeps existing tests wiring-free.
+    answer_cache: AnswerCache | None = None
 
     # ── tunables (defaults mirror Settings; injected at the edge) ─
     confidence_threshold: float = 0.6  # AD-8 serving gate (τ)

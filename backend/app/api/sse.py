@@ -35,8 +35,17 @@ _PILL: dict[str, str] = {
     "b2": "lookup",
     "b3": "lookup",
     "b4": "lookup",
+    # A cache hit delivers the pack without retrieving anything, so it advances
+    # straight to "prepare" — the pill row stays honest about what actually ran.
+    "cache_lookup": "prepare",
     "a6": "prepare",
+    "persist_answer": "prepare",
 }
+
+# Nodes that can put a finished Action Pack on the state: A6 composes one, and
+# cache_lookup replays one (AD-12). Both must reach the client identically — a
+# cache hit is an implementation detail, not a different kind of answer.
+_ANSWER_NODES = frozenset({"a6", "cache_lookup"})
 
 
 def format_sse(event: str, data: dict[str, Any]) -> str:
@@ -68,9 +77,15 @@ class EventTranslator:
             return
 
         for node, update in chunk.items():
+            has_answer = (
+                node in _ANSWER_NODES and isinstance(update, dict) and update.get("answer")
+            )
+            # A cache_lookup *miss* returns {} — don't advance the pill to
+            # "prepare"/"lookup" for a node that did nothing visible.
             pill = _PILL.get(node)
-            if pill is not None:
+            if pill is not None and (node != "cache_lookup" or has_answer):
                 yield from self._advance_pill(pill)
+
             if node == "enter_gap":
                 yield format_sse(
                     "gap", {"phase": "researching", "text": "Searching official sources…"}
@@ -79,11 +94,7 @@ class EventTranslator:
                 yield format_sse(
                     "gap", {"phase": "updated", "text": "Knowledge base updated"}
                 )
-            elif node == "a6" and isinstance(update, dict) and update.get("answer"):
-                yield from self._answer_frames(update["answer"])
-            elif node == "cache_lookup" and isinstance(update, dict) and update.get("answer"):
-                # AD-12 cache hit: skip A4-A6 and serve the cached pack straight away.
-                yield from self._advance_pill("prepare")
+            elif has_answer and isinstance(update, dict):
                 yield from self._answer_frames(update["answer"])
 
     def finalize(self) -> Iterable[str]:

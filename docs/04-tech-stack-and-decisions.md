@@ -95,12 +95,7 @@ The code follows this layout. Tooling made concrete + small additions during imp
   `langgraph` 1.2.6, `langgraph-checkpoint-sqlite` 3.1.0, `langchain-core` 1.4.8,
   `langchain-google-genai` 4.2.5, `langchain-groq` 1.1.3 (verified to co-resolve + import). Deps
   still grow per stage.
-- **Cache (as-built, Stage 3 → wired Stage 7b):** the query→answer cache (AD-12, the "SQLite table"
-  row above) is an **in-memory LRU** — `InMemoryAnswerCache` in `app/infrastructure/cache.py`,
-  implementing the `AnswerCache` port in `app/domain/ports/cache.py`. It is **consulted mid-graph**
-  (a `service+variant+district` hit short-circuits A4–A6, and a repeat of a gap-filled service skips
-  the whole acquisition loop) and **invalidated per service** on B3 upsert and on moderation
-  promote/reject. It stores the serialised answer dict (not the `ActionPack`) — functionally
-  identical for AD-12. It fully serves AD-12's intra-process re-run / quota savings; cross-restart
-  SQLite persistence remains deferred. Full rationale + delta in
-  [10-backend-implementation.md](10-backend-implementation.md).
+- **Cache (as-built, Stage 3):** the query→answer cache (AD-12, the "SQLite table" row above) is
+  currently an **in-memory LRU** (`app/infrastructure/cache.py`). It fully serves AD-12's intra-process
+  re-run / quota savings; cross-restart SQLite persistence is deferred until the Action-Pack JSON DTO
+  exists (Stage 6). Full rationale + delta in [10-backend-implementation.md](10-backend-implementation.md).

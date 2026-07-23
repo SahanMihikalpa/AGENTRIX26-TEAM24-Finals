@@ -1,7 +1,14 @@
-import type { ChatGateway, ExperienceReportGateway } from "@/core/ports";
+import type {
+  ChatGateway,
+  ExperienceReportGateway,
+  ModerationGateway,
+} from "@/core/ports";
 import { config } from "@/infra/config";
+import { HttpExperienceReportGateway } from "./httpExperienceReportGateway";
+import { HttpModerationGateway } from "./httpModerationGateway";
 import { MockChatGateway } from "./mockChatGateway";
 import { MockExperienceReportGateway } from "./mockExperienceReportGateway";
+import { MockModerationGateway } from "./mockModerationGateway";
 import { SseChatGateway } from "./sseChatGateway";
 
 /**
@@ -11,6 +18,7 @@ import { SseChatGateway } from "./sseChatGateway";
  */
 let chatGateway: ChatGateway | null = null;
 let experienceReportGateway: ExperienceReportGateway | null = null;
+let moderationGateway: ModerationGateway | null = null;
 
 export function getChatGateway(): ChatGateway {
   if (chatGateway) return chatGateway;
@@ -22,12 +30,18 @@ export function getChatGateway(): ChatGateway {
 
 export function getExperienceReportGateway(): ExperienceReportGateway {
   if (experienceReportGateway) return experienceReportGateway;
-  // NOTE: the backend has no experience-report endpoint yet (only /api/chat and
-  // /api/sessions/{id}/action-pack exist), so the feedback bar stays on the mock
-  // even when USE_MOCK=false. Swap to an HttpExperienceReportGateway once the
-  // backend exposes POST /api/experience-reports.
-  experienceReportGateway = new MockExperienceReportGateway();
+  experienceReportGateway = config.useMock
+    ? new MockExperienceReportGateway()
+    : new HttpExperienceReportGateway(config.apiBase);
   return experienceReportGateway;
+}
+
+export function getModerationGateway(): ModerationGateway {
+  if (moderationGateway) return moderationGateway;
+  moderationGateway = config.useMock
+    ? new MockModerationGateway()
+    : new HttpModerationGateway(config.apiBase);
+  return moderationGateway;
 }
 
 export { config };

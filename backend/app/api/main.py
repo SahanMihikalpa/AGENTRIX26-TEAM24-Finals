@@ -18,12 +18,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.middleware import CorrelationIdMiddleware
+from app.api.rate_limit import build_rate_limit_middleware
 from app.api.routes.chat import router as chat_router
 from app.api.routes.feedback import router as feedback_router
 from app.api.routes.moderation import router as moderation_router
 from app.infrastructure.config import Settings, get_settings
-from app.infrastructure.logging import configure_logging, configure_tracing, get_logger
+from app.infrastructure.logging import configure_logging, get_logger
 
 logger = get_logger(__name__)
 
@@ -38,10 +38,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """
     settings = get_settings()
     configure_logging(settings.log_level)
-    if configure_tracing(
-        enabled=settings.langchain_tracing_v2, api_key=settings.langsmith_api_key
-    ):
-        logger.info("LangSmith tracing enabled")
     app.state.settings = settings
     logger.info("Starting GovGuide backend (env=%s)", settings.app_env)
     yield
@@ -58,6 +54,16 @@ def create_app() -> FastAPI:
     app = FastAPI(title="GovGuide API", version="0.1.0", lifespan=lifespan)
     app.state.settings = settings  # available before lifespan (e.g. under TestClient DI)
 
+    # Order matters: Starlette makes the *last* registered middleware the
+    # outermost, so the rate limiter goes on first and CORS wraps it. That way a
+    # 429 still comes back with CORS headers and the browser can read the body,
+    # instead of the fetch failing as an opaque network error.
+    app.middleware("http")(
+        build_rate_limit_middleware(
+            chat_rpm=settings.chat_rate_limit_rpm,
+            api_rpm=settings.api_rate_limit_rpm,
+        )
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
@@ -65,8 +71,6 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    # Added last → outermost: every request (and CORS preflight) gets a correlation id.
-    app.add_middleware(CorrelationIdMiddleware)
 
     @app.get("/health", tags=["meta"])
     async def health() -> dict[str, str]:

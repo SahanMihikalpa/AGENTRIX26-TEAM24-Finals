@@ -48,3 +48,26 @@ export interface ActionPackDTO {
   fallback: boolean;
   fallback_message: string | null;
 }
+
+/** Acknowledgement from `POST /api/experience-reports` (FR-6). */
+export interface ExperienceReportResponseDTO {
+  id: number;
+  status: string;
+}
+
+/** One row of `GET /api/moderation/queue` (B4 / FR-7). */
+export interface ModerationItemDTO {
+  source_id: number;
+  title: string;
+  url: string | null;
+  source_type: string;
+  confidence: number;
+  verification_status: string;
+  retrieved_date: string;
+  published_date: string | null;
+}
+
+/** Result of `POST /api/moderation/{id}/promote|reject`. */
+export interface ModerationActionDTO {
+  ok: boolean;
+}

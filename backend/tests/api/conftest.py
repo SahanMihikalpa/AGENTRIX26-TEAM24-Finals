@@ -27,7 +27,6 @@ from app.application.feedback import ExperienceReportIntake
 from app.application.graph import GraphDependencies
 from app.application.graph.builder import build_graph
 from app.application.moderation import ModerationService
-from app.domain.ports.cache import AnswerCache
 from app.domain.ports.source_pool import PooledDocument
 from app.infrastructure.cache import InMemoryAnswerCache
 from app.infrastructure.config import get_settings
@@ -166,10 +165,7 @@ def build_client(tmp_path: Path) -> Iterator[ClientFactory]:
     clients: list[TestClient] = []
 
     def _build(
-        structured: dict[type, Any],
-        *,
-        pool_docs: list[PooledDocument] | None = None,
-        cache: AnswerCache | None = None,
+        structured: dict[type, Any], *, pool_docs: list[PooledDocument] | None = None
     ) -> tuple[TestClient, ChromaSqliteStore]:
         root = tmp_path / f"kb{len(clients)}"
         root.mkdir(parents=True, exist_ok=True)
@@ -177,23 +173,24 @@ def build_client(tmp_path: Path) -> Iterator[ClientFactory]:
         embedder = DeterministicEmbedder()
         KnowledgeSeeder(store, embedder).load(_SEED)
         llm = ScriptedLLM(structured)
+        cache = InMemoryAnswerCache()
         deps = GraphDependencies(
             llm=llm,
             embedder=embedder,
             store=store,
             retriever=store,
             source_pool=FakeSourcePool(pool_docs),
+            answer_cache=cache,
             web_allowlist=["gov.lk"],
             grader_sufficient_above=0.4,
-            cache=cache,  # opt-in: existing tests pass None → cache nodes are no-ops
         )
         runtime = AppRuntime(
             graph=build_graph(deps, checkpointer=MemorySaver()),
             store=store,
-            cache=cache or InMemoryAnswerCache(),
+            cache=cache,
             settings=get_settings(),
             experience_intake=ExperienceReportIntake(store, llm, embedder),
-            moderation=ModerationService(store, cache),
+            moderation=ModerationService(store, cache=cache),
         )
         app = create_app()
         app.dependency_overrides[get_runtime] = lambda: runtime

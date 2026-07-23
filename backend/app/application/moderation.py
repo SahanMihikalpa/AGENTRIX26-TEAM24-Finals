@@ -24,9 +24,21 @@ from app.domain.ports.knowledge import KnowledgeStore
 class ModerationService:
     """List the review queue and apply moderator promote/reject decisions."""
 
-    def __init__(self, store: KnowledgeStore, cache: AnswerCache | None = None) -> None:
+    def __init__(self, store: KnowledgeStore, *, cache: AnswerCache | None = None) -> None:
         self._store = store
         self._cache = cache
+
+    def _invalidate(self) -> None:
+        """Clear every cached answer after a moderation decision.
+
+        Promote/reject change a *source*, and a source can back facts for any
+        number of services — mapping it back to the affected service ids would
+        need a reverse index we don't keep. Moderation is a rare, human-paced
+        action and the cache is small, so clearing wholesale is the cheap,
+        obviously-correct choice over serving an answer with a stale trust label.
+        """
+        if self._cache is not None:
+            self._cache.clear()
 
     def queue(self, *, limit: int = 50) -> list[Source]:
         """Sources still awaiting review (``auto_gathered`` / ``pending``)."""
@@ -39,9 +51,9 @@ class ModerationService:
         )
         if updated is None:
             return False
-        # The served label for this service changes (pending → verified), so any
-        # cached answers must be dropped (AD-12).
-        self._invalidate_cache(self._store.get_service_ids_for_source(source_id))
+        # A6 renders the trust label from the source, so a cached pack would keep
+        # saying "pending verification" after the moderator said otherwise.
+        self._invalidate()
         return True
 
     def reject(self, source_id: int) -> bool:
@@ -54,14 +66,8 @@ class ModerationService:
         )
         if updated is None:
             return False
-        # Capture the affected services *before* de-indexing removes the chunks.
-        service_ids = self._store.get_service_ids_for_source(source_id)
         self._store.delete_chunks_for_source(source_id)
-        self._invalidate_cache(service_ids)
+        # Quarantining is the case that matters most: without this, a cached pack
+        # would keep serving facts from a source a moderator just pulled.
+        self._invalidate()
         return True
-
-    def _invalidate_cache(self, service_ids: list[int]) -> None:
-        if self._cache is None:
-            return
-        for service_id in service_ids:
-            self._cache.invalidate_service(service_id)

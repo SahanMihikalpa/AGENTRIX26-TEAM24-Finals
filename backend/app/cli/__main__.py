@@ -1,14 +1,15 @@
-"""``python -m app.cli <command>`` — build / seed the knowledge base.
+"""``python -m app.cli <command>`` — build / seed / curate the knowledge base.
 
-* ``build`` — raw seed documents → ``catalog.json`` skeleton.
-* ``seed``  — ``catalog.json`` → SQLite + Chroma.
+* ``build``          — raw seed documents → ``catalog.json`` skeleton.
+* ``seed``           — ``catalog.json`` → SQLite + Chroma.
+* ``merge-services`` — fold thin duplicate catalog entries into curated ones.
 """
 
 from __future__ import annotations
 
 import argparse
 
-from app.cli import build_catalog, seed
+from app.cli import build_catalog, merge_services, seed
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -26,6 +27,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     seed.add_arguments(seed_parser)
     seed_parser.set_defaults(func=seed.run)
+
+    merge_parser = subcommands.add_parser(
+        "merge-services",
+        help="fold duplicate catalog entries into the curated service",
+        description=merge_services.__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    merge_services.add_arguments(merge_parser)
+    merge_parser.set_defaults(func=merge_services.run)
 
     args = parser.parse_args(argv)
     return int(args.func(args))
