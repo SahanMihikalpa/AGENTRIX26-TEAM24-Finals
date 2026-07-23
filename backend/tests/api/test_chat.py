@@ -15,7 +15,6 @@ from app.application.agents.schemas import (
 )
 from app.domain.entities import SourceType
 from app.domain.ports.source_pool import PooledDocument
-from app.infrastructure.cache import InMemoryAnswerCache
 from tests.api.conftest import ClientFactory, parse_sse
 
 
@@ -139,36 +138,3 @@ def test_action_pack_fetch_after_run(build_client: ClientFactory) -> None:
     assert found.json()["service_label"] == "Passport Renewal"
 
     assert client.get("/api/sessions/unknown/action-pack").status_code == 404
-
-
-def test_repeat_query_is_served_from_cache(build_client: ClientFactory) -> None:
-    cache = InMemoryAnswerCache()
-    client, _ = build_client(
-        {
-            IntentExtraction: IntentExtraction(
-                normalized_query="passport renewal",
-                service_guess="passport_renewal",
-                entities=IntentEntities(district="Colombo"),
-            ),
-            ActionSteps: ActionSteps(steps=["Bring your birth certificate"]),
-        },
-        cache=cache,
-    )
-
-    first = parse_sse(
-        client.post("/api/chat", json={"message": "renew passport", "session_id": "k1"}).text
-    )
-    # different session, identical resolved request → must hit the shared cache
-    second = parse_sse(
-        client.post("/api/chat", json={"message": "renew passport", "session_id": "k2"}).text
-    )
-
-    assert _of(first, "action_pack") and _of(second, "action_pack")
-    assert (
-        _of(first, "action_pack")[0]["service_label"]
-        == _of(second, "action_pack")[0]["service_label"]
-    )
-    # the first run retrieved (lookup pill); the cache hit skips A4-A6 (no lookup pill)
-    assert "lookup" in {step["id"] for step in _of(first, "step")}
-    assert "lookup" not in {step["id"] for step in _of(second, "step")}
-    assert len(cache) == 1

@@ -1,0 +1,65 @@
+# GovGuide — full stack (FastAPI backend + Next.js frontend), CPU-only.
+#
+#   docker compose up --build       # build + run
+#   docker compose down             # stop
+#
+# Requires backend/.env (copy from backend/.env.example and fill in the keys).
+name: govguide
+
+services:
+  backend:
+    build:
+      context: ./backend
+    image: govguide-backend:cpu
+    container_name: govguide-backend
+    # Secrets stay out of the image and arrive here at run time.
+    env_file:
+      - ./backend/.env
+    environment:
+      # Explicit overrides — these must hold inside the container regardless of
+      # what .env says. CORS is the *browser* origin, so it has to track the
+      # frontend's published host port, not its container port.
+      HOST: "0.0.0.0"
+      PORT: "8000"
+      CORS_ORIGINS: "http://localhost:${FRONTEND_PORT:-3100}"
+    ports:
+      - "8000:8000"
+    volumes:
+      # Bind mount, not a named volume: the KB is already seeded on the host
+      # (data/chroma + data/govguide.sqlite3), so the container starts with real
+      # data, and everything the self-expanding RAG loop writes — plus the
+      # LangGraph checkpoints that let the A3 interview resume — survives
+      # `docker compose down` and stays inspectable from Windows.
+      - ./backend/data:/app/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).status == 200 else 1)"
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 5
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Build-time, not run-time: Next inlines NEXT_PUBLIC_* into the client
+        # bundle. Changing these needs a rebuild, not just a restart.
+        NEXT_PUBLIC_API_BASE: "http://localhost:8000"
+        NEXT_PUBLIC_USE_MOCK: "false"
+    image: govguide-frontend:latest
+    container_name: govguide-frontend
+    ports:
+      # Published on 3100, not 3000: Windows/Hyper-V reserves 2966-3065 on this
+      # machine (`netsh int ipv4 show excludedportrange protocol=tcp`), so
+      # binding 3000 fails with a permissions error even though nothing is
+      # listening. Set FRONTEND_PORT to change it — CORS_ORIGINS above follows.
+      - "${FRONTEND_PORT:-3100}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped

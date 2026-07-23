@@ -68,10 +68,9 @@ in at startup. Swapping a provider (Gemini→Groq, Chroma→pgvector) touches on
 
 ## Build status
 
-**Stages 0–7 are complete** — see the as-built log in
-[`../docs/10-backend-implementation.md`](../docs/10-backend-implementation.md). The backend
-boots (`/health`), serves the full API contract (chat SSE + resume, action-pack fetch,
-experience reports, moderation), self-expands its KB under the confidence gate (AD-8), caches
-answers with per-service invalidation (AD-12), and is correlation-id traceable (QA-8).
-Noted enhancements (non-blocking): per-token streaming, full-page web fetch in B1, vector
-service-matching in A2, and a SQLite-backed cache.
+Implemented stage by stage; see the as-built log in
+[`../docs/10-backend-implementation.md`](../docs/10-backend-implementation.md).
+Current: **Stage 6b — feedback + moderation** (`POST /api/experience-reports` feeds
+citizen feedback through the same B2→B3 pipeline; `GET /api/moderation/queue` +
+`POST /api/moderation/{source_id}/promote|reject` drive the B4 review loop). This
+completes the API contract; **Stage 7 — hardening** next.

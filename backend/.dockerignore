@@ -1,0 +1,25 @@
+# Keep the build context small and secret-free.
+
+# Secrets — injected at run time via compose `env_file`, never baked in.
+.env
+.env.*
+!.env.example
+
+# Local data stores — bind-mounted at run time (see docker-compose.yml).
+data/
+
+# Python noise
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Not needed to run the service
+tests/
+environment.yml
+Dockerfile
+.dockerignore

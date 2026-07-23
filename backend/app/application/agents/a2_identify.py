@@ -18,15 +18,34 @@ from typing import Any
 
 from app.application.agents.schemas import ServiceDisambiguation
 from app.application.graph.state import GraphState
-from app.domain.entities import Service
+from app.domain.entities import Service, ServiceCoverage
 from app.domain.ports.knowledge import KnowledgeStore
 from app.domain.ports.llm import LLMProvider
 
+
+def _coverage_note(coverage: ServiceCoverage) -> str:
+    """Render coverage as something an LLM can weigh, not a raw tuple."""
+    if not coverage.is_answerable:
+        return "no documented requirements — cannot produce a checklist"
+    parts = [f"{coverage.requirements} documented requirement(s)"]
+    if coverage.fees:
+        parts.append(f"{coverage.fees} fee(s)")
+    if coverage.offices:
+        parts.append(f"{coverage.offices} office(s)")
+    return ", ".join(parts)
+
 _SYSTEM = (
     "You disambiguate which government service a citizen means. You are given a "
-    "request and a short list of candidate services (id + name + description). "
+    "request and a short list of candidate services (id + name + description), each "
+    "annotated with how much documented information the knowledge base holds for it. "
     "Choose the single best matching id, or return service_id=null if none "
-    "clearly fits. Only ever return an id from the candidate list."
+    "clearly fits. Only ever return an id from the candidate list.\n\n"
+    "When two candidates both plausibly cover the request — typically a broad "
+    "service and a narrower entry whose name repeats the citizen's words — choose "
+    "the one with documented requirements and fees. The narrower entry is usually a "
+    "duplicate of a case the broader service already covers in detail, and picking "
+    "it means the citizen gets no checklist at all. Only prefer a candidate with no "
+    "documented information when it is the sole one that actually matches."
 )
 
 
@@ -40,9 +59,14 @@ class ServiceIdentifierAgent:
         *,
         candidate_limit: int = 5,
         min_confidence: float = 0.5,
+        confidence_threshold: float = 0.6,
     ) -> None:
         self._store = store
         self._llm = llm
+        # Mirrors A6's AD-8 gate: facts below this are not counted as coverage,
+        # because A6 would refuse to serve them and the citizen would get the
+        # fallback from a service that looked well-documented here.
+        self._confidence_threshold = confidence_threshold
         self._candidate_limit = candidate_limit
         self._min_confidence = min_confidence
 
@@ -61,8 +85,12 @@ class ServiceIdentifierAgent:
         if self._llm is None:
             return self._resolved(candidates[0])
 
+        coverage = self._store.get_service_coverage(
+            [c.id for c in candidates if c.id is not None],
+            min_source_confidence=self._confidence_threshold,
+        )
         decision = self._llm.complete_structured(
-            self._disambiguation_prompt(query, candidates),
+            self._disambiguation_prompt(query, candidates, coverage),
             ServiceDisambiguation,
             system=_SYSTEM,
         )
@@ -94,9 +122,13 @@ class ServiceIdentifierAgent:
         return {"service_id": None, "service_unknown": True}
 
     @staticmethod
-    def _disambiguation_prompt(query: str, candidates: list[Service]) -> str:
+    def _disambiguation_prompt(
+        query: str, candidates: list[Service], coverage: dict[int, ServiceCoverage]
+    ) -> str:
         lines = [
-            f"- id={c.id}: {c.name_en} — {c.description}".rstrip(" —") for c in candidates
+            f"- id={c.id}: {c.name_en} — {c.description}".rstrip(" —")
+            + f" [{_coverage_note(coverage.get(c.id or -1, ServiceCoverage()))}]"
+            for c in candidates
         ]
         catalog = "\n".join(lines)
         return f"Citizen request: {query}\n\nCandidate services:\n{catalog}"

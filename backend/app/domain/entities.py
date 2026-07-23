@@ -125,6 +125,60 @@ class Service:
 
 
 @dataclass(frozen=True, slots=True)
+class ServiceCoverage:
+    """How much *servable* fact a service has behind it.
+
+    A6 can only render a real checklist from requirements, fees and an office, so
+    this is the difference between an answer and the "we couldn't verify this"
+    fallback. A2 uses it to prefer a service it can genuinely answer for when two
+    candidates match the citizen's words equally well — the crawl tends to create
+    thin, near-verbatim catalog entries that would otherwise out-match the properly
+    curated parent service.
+
+    Counting rows is not enough: the AD-8 confidence gate refuses to serve facts
+    whose source sits below the threshold, so a service can hold requirements and
+    still answer nothing. These counts are therefore always **relative to a minimum
+    source confidence** — the caller passes the same threshold A6 will apply.
+    """
+
+    requirements: int = 0
+    fees: int = 0
+    offices: int = 0
+
+    @property
+    def is_answerable(self) -> bool:
+        """True when there is at least one documented requirement to hand over."""
+        return self.requirements > 0
+
+    @property
+    def score(self) -> int:
+        """A single ordering value; requirements matter most, offices least."""
+        return self.requirements * 4 + self.fees * 2 + self.offices
+
+
+@dataclass(frozen=True, slots=True)
+class ServiceMerge:
+    """What a duplicate-service merge moved, and what it threw away.
+
+    Reported before the fact by ``--dry-run`` and after it by the real run, because
+    a merge is lossy on purpose: the duplicate's own thin, auto-extracted variants
+    and facts are dropped in favour of the curated parent's, while its retrieved
+    text (the part with real value) is repointed and kept.
+    """
+
+    duplicate_id: int
+    duplicate_name: str
+    parent_id: int
+    parent_name: str
+    chunks_moved: int = 0
+    variants_dropped: int = 0
+    requirements_dropped: int = 0
+    fees_dropped: int = 0
+    offices_relinked: int = 0
+    district_variations_relinked: int = 0
+
+
+@dataclass(frozen=True, slots=True)
 class ServiceVariant:
     """A branch of a service (e.g. inheritance | sale | gift) — what A3 pins down."""
 

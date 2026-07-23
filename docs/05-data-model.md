@@ -156,6 +156,20 @@ from `auto_gathered` facts, the supporting facts' `confidence` is compared to a 
 from becoming a confidently-wrong government answer on stage. The trade-off (occasionally refusing a
 correct-but-low-confidence find) is accepted: under-answering beats misleading.
 
+**What "the supporting facts" means (as-built, Stage 7).** The gate reads the sources behind the
+`REQUIREMENT` and `FEE` rows A6 is about to render — not the chunks A4 retrieved. The two diverge:
+A6 assembles the pack deterministically from store rows, each carrying its own `source_id`, while
+retrieval returns the nearest chunks, which may include crawled text that contributed nothing to the
+answer. Judging on retrieval meant a single stray low-confidence chunk could suppress a checklist
+built entirely from `verified` rows — routinely so after a `merge-services` run repoints crawled
+chunks onto a curated service.
+
+This is not a loosening of AD-8. Nothing `auto_gathered` below `τ` is served, the label still tracks
+the provenance of the rows shown, and one case the old gate missed is now refused outright: a variant
+with **no sourced rows at all** used to yield an empty checklist wearing a `verified` badge. The
+`ActionPack` `citations` come from the same set, which is what makes the UI's promise — "every
+requirement above is based on these official sources" — literally true.
+
 ## Alternatives considered
 | Alternative | Why not |
 |---|---|

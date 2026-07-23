@@ -10,7 +10,6 @@ from collections.abc import Mapping, Sequence
 
 from app.domain.entities import SourceType
 from app.domain.ports import (
-    AnswerCache,
     EmbeddingProvider,
     KnowledgeStore,
     LLMProvider,
@@ -86,6 +85,12 @@ class FakeKnowledgeStore:
     def get_service(self, service_id: int) -> object | None:
         return None
 
+    def get_service_coverage(self, service_ids: object) -> dict:
+        return {}
+
+    def get_sources(self, source_ids: object) -> dict:
+        return {}
+
     def list_variants(self, service_id: int) -> list:
         return []
 
@@ -112,27 +117,22 @@ class FakeKnowledgeStore:
     def delete_chunks_for_source(self, source_id: int) -> int:
         return 0
 
-    def get_service_ids_for_source(self, source_id: int) -> list:
-        return []
-
-
-class FakeAnswerCache:
-    def get_answer(
-        self, service_id: int, *, variant_id: int | None = None, district: str | None = None
-    ) -> dict | None:
+    def merge_service(
+        self, duplicate_id: int, into_id: int, *, dry_run: bool = False
+    ) -> object | None:
         return None
 
-    def put_answer(
+    def save_checklist(
         self,
-        service_id: int,
-        answer: dict,
+        session_id: str,
+        answer: object,
         *,
+        service_id: int | None = None,
         variant_id: int | None = None,
-        district: str | None = None,
-    ) -> None:
-        return None
+    ) -> int:
+        return 1
 
-    def invalidate_service(self, service_id: int) -> None:
+    def get_checklist(self, session_id: str) -> dict | None:
         return None
 
 
@@ -169,7 +169,6 @@ def test_fakes_satisfy_ports() -> None:
     assert isinstance(FakeLLM(), LLMProvider)
     assert isinstance(FakeEmbeddings(), EmbeddingProvider)
     assert isinstance(FakeKnowledgeStore(), KnowledgeStore)
-    assert isinstance(FakeAnswerCache(), AnswerCache)
     assert isinstance(FakeRetriever(), Retriever)
     assert isinstance(FakeWebSearch(), WebSearch)
     assert isinstance(FakeParser(), SourceParser)

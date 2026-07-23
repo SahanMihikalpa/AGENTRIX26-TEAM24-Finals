@@ -92,27 +92,35 @@ CREATE TABLE IF NOT EXISTS experience_report (
     created_at       TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS session (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    district   TEXT,
-    created_at TEXT NOT NULL
-);
+-- The ER's `session` / `session_message` tables are deliberately absent: LangGraph's
+-- SqliteSaver checkpointer is the system of record for conversation state (AD-3),
+-- keyed by the same session id, and a second copy here could only drift from it.
+-- Logged as a delta in docs/05 + docs/10.
 
-CREATE TABLE IF NOT EXISTS session_message (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id INTEGER NOT NULL REFERENCES session(id) ON DELETE CASCADE,
-    role       TEXT NOT NULL,
-    content    TEXT NOT NULL,
-    created_at TEXT NOT NULL
-);
-
+-- One row per Action Pack actually served to a citizen. The checkpointer already
+-- holds the live state, but it is pruned and thread-scoped; this is the durable,
+-- queryable record of what the system told people — the audit trail behind the
+-- "we always show you the source" promise, and the fallback that keeps
+-- GET /api/sessions/{id}/action-pack answering after a checkpoint is gone.
+--
+-- `session_id` is TEXT: it is the LangGraph thread id (a hex string), not a row id.
+-- `variant_id` is nullable because fallback packs are served without a variant.
+--
+-- `service_id`/`variant_id` are recorded as plain ids with **no foreign key**, on
+-- purpose. This is an append-only record of something that already happened; a
+-- referential check could only ever reject a row *after* the citizen was served,
+-- turning a bookkeeping edge case into a failed request. The payload is
+-- self-contained, so the ids are an index for querying, not an integrity claim.
 CREATE TABLE IF NOT EXISTS checklist (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id   INTEGER NOT NULL REFERENCES session(id) ON DELETE CASCADE,
-    variant_id   INTEGER NOT NULL REFERENCES service_variant(id),
+    session_id   TEXT NOT NULL,
+    service_id   INTEGER,
+    variant_id   INTEGER,
     payload_json TEXT NOT NULL,
     created_at   TEXT NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_checklist_session ON checklist(session_id);
 
 CREATE INDEX IF NOT EXISTS idx_variant_service   ON service_variant(service_id);
 CREATE INDEX IF NOT EXISTS idx_requirement_variant ON requirement(variant_id);

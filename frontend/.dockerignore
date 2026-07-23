@@ -1,0 +1,15 @@
+# Keep the build context small, and keep host env out of the image build:
+# NEXT_PUBLIC_* must come from the compose build args, not from a stray
+# .env.local that happened to be on the developer's machine.
+node_modules
+.next
+out
+
+.env.local
+.env.*.local
+
+*.tsbuildinfo
+npm-debug.log*
+README.md
+Dockerfile
+.dockerignore

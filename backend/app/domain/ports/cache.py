@@ -1,46 +1,59 @@
-"""Query→answer cache port (AD-12).
+"""``AnswerCache`` port — short-circuit repeated Action-Pack generation (AD-12).
 
-The self-expanding loop is quota-scarce, so an identical request — same
-``service`` + ``variant`` + ``district`` — should skip the whole graph and replay
-the previously generated answer. This port is the socket the graph wiring uses; the
-in-memory implementation lives in ``infrastructure/cache.py``.
+Identical ``service + variant + district`` questions produce identical Action
+Packs, and generating one costs the scarce part of the budget: an A5 grading call
+plus an A6 composition call. Caching that result is what lets a demo re-run, or
+two citizens asking the same thing, cost nothing.
 
-The cached value is the **serialised** answer dict (exactly what A6 writes to the
-``GraphState`` and what the API serves), keyed by primitive args — so the port
-stays free of any transport- or infrastructure-specific types and the
-``application`` layer can depend on it without importing ``infrastructure``.
+The cached value is the **serialized** Action Pack — the same JSON-ready ``dict``
+that lives in ``GraphState["answer"]`` and that ``ActionPackDTO`` validates on the
+way out. Keeping the cache in the state's own representation (rather than the
+``ActionPack`` entity) means no inverse deserializer is needed, and it keeps the
+door open to the durable SQLite tier docs/04 anticipates.
+
+Correctness rests on **invalidation**: B3 drops a service's entries the moment it
+upserts new knowledge for it, so a freshly-expanded KB can never serve a stale
+answer.
 """
 
 from __future__ import annotations
 
-from typing import Any, Protocol, runtime_checkable
+from dataclasses import dataclass
+from typing import Any, Protocol
 
 
-@runtime_checkable
+@dataclass(frozen=True, slots=True)
+class CacheKey:
+    """The identity of a cached answer: a service, optionally narrowed."""
+
+    service_id: int
+    variant_id: int | None = None
+    district: str | None = None
+
+    @classmethod
+    def build(
+        cls, service_id: int, *, variant_id: int | None = None, district: str | None = None
+    ) -> CacheKey:
+        """Construct a key with a normalized (case/space-insensitive) district."""
+        normalized = district.strip().lower() if district else None
+        return cls(service_id, variant_id, normalized or None)
+
+
 class AnswerCache(Protocol):
-    """A query→answer cache keyed by service (optionally narrowed by variant/district)."""
+    """Stores generated Action Packs, keyed by what determines their content."""
 
-    def get_answer(
-        self,
-        service_id: int,
-        *,
-        variant_id: int | None = None,
-        district: str | None = None,
-    ) -> dict[str, Any] | None:
-        """Return the cached answer for this resolved request, or ``None`` on a miss."""
+    def get(self, key: CacheKey) -> dict[str, Any] | None:
+        """Return the cached serialized Action Pack, or ``None`` on a miss."""
         ...
 
-    def put_answer(
-        self,
-        service_id: int,
-        answer: dict[str, Any],
-        *,
-        variant_id: int | None = None,
-        district: str | None = None,
-    ) -> None:
-        """Cache ``answer`` under the resolved (service, variant, district) key."""
+    def put(self, key: CacheKey, answer: dict[str, Any]) -> None:
+        """Cache ``answer`` under ``key``."""
         ...
 
     def invalidate_service(self, service_id: int) -> None:
-        """Drop every cached answer for a service (on KB upsert / moderation change)."""
+        """Drop every cached answer for ``service_id`` (called on KB upsert)."""
+        ...
+
+    def clear(self) -> None:
+        """Drop everything (used when a change's blast radius is unknown)."""
         ...
