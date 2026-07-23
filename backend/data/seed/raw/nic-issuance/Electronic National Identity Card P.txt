@@ -1,0 +1,213 @@
+Electronic National Identity Card Project (e-NIC)
+
+The Electronic National Identity Card Project (e-NIC) was established in 2012 with the intention of verifying personnel identity accurately and efficiently using modern technological methodology for the National Identity card issued by the Department for Registration of Persons.
+
+The ultimate goal of the project is to collect the biodata, biometric data, family information, andInter national Civil Aviation Organization (ICAO) certified photographs of every Sri Lankan citizen over the age of 15, and establish a National Register of Persons by re-registering the citizens and issuing Electronic National Identity Cards (e-NIC) with Sri Lanka Unique Digital Identity (SL-UDI) numbers to every registered citizen, thereby establishing a service platform and mechanism for exchanging information required for the confirmation, verification, and certification of personal identity for government and non-government institutions.
+
+The project has already provided the citizens with the following facilities to make it easier for them to obtain National ID cards:
+ Establishing 335 departmental ID card units in all the Divisional Secretariats with the necessary human, technical, and physical resources, enabling to obtain all the services related to obtaining the national identity cards at the regional level.
+ Establishment of departmental provincial offices in the North, East, South, North-West, and Central provinces to decentralize departmental services to the provincial level.
+ Establishment of the Department for Registration of Persons in Battaramulla, Suhurupaya Building, in 2016, with high technical facilities to provide a comprehensive service.
+ Connecting regional offices and provincial offices with the head office through VPN technology to provide prompt and efficient service to the public.
+ Registration of 2341 studios all over the island in the department and installing the related software in the studios for receiving personal photographs online to the head office in accordance with ICAO international standards.
+ Issuance of a polycarbonate smart card with ICAO photo laser-printed in Sinhala, Tamil, and English trilingual starting from October 27, 2017 to replace the old card where personal details were handwritten, photo pasted, and laminated
+In addition to the head office, the Galle provincial office also offers one-day service facilities to the public.
+Mandatory requirement of an electronic national identity card
+
+In the near future, in a digitalized economy, the electronic national identity card will be the primary document for verifying personnel information in providing all public services such as public welfare, banking, driving licenses, passports, pensions, the employees' provident fund, insurance, employment opportunities, etc.
+
+
+ICAO Photographs
+
+Taking photographs of citizens for issuing national identity cards
+Only photographs that comply with the International Civil Aviation Organization (ICAO) standards should be used for the issuance of National Identity Cards, according to the regulations of the amended Act No. 08 of 2006 approved by the Parliament on 10.02.2016 in relation to the implementation of the provisions of the Registration of Persons Act No. 32 of 1968.
+
+Photographers who own photographic studios all over the island have been registered with the department and given the necessary software and training to take photographs of individuals in accordance with ICAO standards, in accordance with the conditions and criteria of the Department of Registration of Persons.
+
+Points to be considered while operating a registered studio in the Department of Registration of Persons
+
+ Registration of studios
+ Renewal of registration
+ Temporary suspension of registration of studios
+ Blacklisting of registered studios
+ Change of ownership of the studio.
+ Changing the business location of the studio.
+Registration of Studios
+
+In order to obtain photos that conform to the above standards, studios located all over the island are registered. The fee charged for registration is Rs. 15,000.00.
+The application form for registration of studios should be duly completed and forwarded to the Commissioner General for Registration of Persons, Department for Registration of Persons, 10th Floor, Suhurupaya, Battaramulla, along with copies of relevant certificates.
+
+Certificates and other documents required for registration,
+
+Duly completed application
+Certified photocopy of the Business Registration Certificate registered as a studio. (Certified by Grama Niladhari or a Justice of the Peace)
+Copy of the National Identity Card of the studio owner submitting the application. (Certified by Grama Niladhari or a Justice of the Peace)
+To prove the relevant professional qualifications of the applicant (foundation, diploma, degree - along with attested copies of relevant certificates to prove professional qualification)
+Renewal of Registration
+
+A fee of Rs.3000.00 will be charged every 2 years for software license renewal from registered studios. The registration can be renewed by making payments online after the software notifies you that the contract period is coming to an end. Renewal can be done by submitting a copy of the bank receipt/slip to the email address (enic.drp@gmail.com) if payment is made through the bank without online payment.
+
+Following are the many reasons for renewing registration:
+
+Renewal of software licenses given to photo studios once every year (The above renewal fee must be paid.)
+In case the studio is temporarily cancelled
+In case of transfer of ownership
+In case of change of location of studio (in case of change of address)
+When the first owner is dead
+Temporary cancellation of registration of the studio
+When the system detects that photos without ICAO standards are taken and those photos are forwarded to the department, the registration of the studio will be temporarily canceled, and a message will be sent to the studio concerned. A written request must be submitted for renewal of registration. Depending on the nature of the offense, an investigation will be conducted, and based on its results, a decision will be made on temporary cancellation, removal, or blacklisting.
+
+Black List
+IIn the event that three temporary cancellations have been made due to several previous mistakes, if the same mistakes are made again, the registration of the photography studio will be canceled or blacklisted after a formal investigation and confirmation.
+
+Change of Ownership
+This change of ownership can arise on two occasions
+
+Death of the owner of the registered studio
+Transferring ownership of the studio to another person.
+When the ownership of the studio changes, the matter should be immediately notified in writing to the Department for Registration of Persons.
+
+Change of Business Location
+If the studio is relocated to another place,
+In order to operate the studio at the new location, the business registration certificate should be updated according to the change of address along with the lease agreement or rental agreement, and after the changes are made, the studio owner should submit a written request to the department confirming the change of address along with a certified copy thereof.
+Minimum requirement List for ICAO studio
+
+General Facts,
+
+After taking the photo, only the Photo Reference Slip issued by the software should be given to the applicant. According to the 18th December 2023 gazette notification, the maximum fee that can be charged from an applicant for obtaining a photograph is Rs.400.00
+The photographs taken by the registered photography studios in accordance with ICAO standards will be entered into the department's data system using Photo Studio software. A one-day training workshop will be organized by the project office Affairs on behalf of the department.
+A photograph taken by the studio is valid only for a period of 06 months from the date of taking it.
+
+
+
+Verification of National Identity Card Information relevant to the online system (NIC LOOKUP System)
+The Department of Registration of Persons has already started providing a secure web service as an interim service until the automatic verification of personal information directly into the computer systems of external organizations is implemented in the near future through the Electronic National Identity Card project. Accordingly, through this service, with the consent of the individual, we will automatically provide the information on the National Identity Card to external organizations registered in the Department through an online system, ensuring the privacy of the individual.
+
+ Since our department only provides the computerized information related to the National Identity Card number securely, we do not hold the responsibility for the decisions made by the relevant institutions based on that information, and the relevant institutions are responsible for the decisions made regarding their functions. At present, the process of issuing ID cards is done through a computerized data system, and a significant amount of information related to National ID cards, which was done using human labour before 2014, has now been added to the data system.
+
+ In the event that a person has been informed by a financial institution or any other institution that the identity card information is not available in the departmental data system while fulfilling the service requirements, an inquiry could be made from the Department in this regard through the telephone number 0115226164, or by sending a request to the email address niclookup.ccu@drp.lk along with the identity card issued to the concerned person, birth certificate, and the telephone number through which the institution that has notified to make the inquiry could be contacted.
+
+
+Translation of National Identity cards into English 
+In the event that a holder of a National Identity card requests an English translation of the National Identity card confirming the information on the National Identity card issued by the Department for Registration of Persons, the information on the National Identity card will be translated and provided.
+
+Documents to be submitted to obtain English translations of National Identity cards
+
+ National Identity card (undamaged clear National Identity card should be provided)
+ The form in which the information of the National Identity card is recorded.
+ Receipt obtained by paying Rs.2000/- to the cashier counter of the head office of the Department for Registration of Persons for translation of the National Identity card into English.
+It is possible to obtain English translations of the National Identity card from the B Wing on the 09th floor of the Head Office of the Department for Registration of Persons, and it is mandatory for the holder of the National Identity card to be present for this purpose. In the event that the holder of the National Identity card is unable to come due to some special reason, the letter of English translation of the National Identity card could be obtained by providing a letter of authorization given to mother, father, spouse, siblings or the legal guardian.
+
+
+Mobile Services 
+This opportunity is provided by the Department when a special request is made by any institution or Government Department or when a request is made from the Commissioner General by the Divisional Secretariats.
+
+
+Confirmation of National Identity card information through the online system 
+The Department for Registration of Persons is delegated the authority to confirm the accuracy of information in the National Identity card by Section 39 of the Registration of Persons Act No.32 of 1968, as amended by the Registration of Persons Act No. 8 of 2016. In order to obtain this service, a written application must be made to the Commissioner General.
+
+Accordingly, information of the computerized National Identity card is provided through an online system to the authorities, who contract with the Department upon the consent of the National Identity card holder. Here, an invoice is issued by the Department to a relevant institution on a monthly basis, including the fee to be paid to a certain institution in relation to the number of requests submitted for confirmation of information.
+
+Whenever providing service requirements of a person, in the event that the information of the National Identity card of a person is not available in the database of this Department, a financial institution or any other organization queries could be made from the department, subsequent to notifying the person concerned.
+
+In order to confirm the accuracy of the National Identity card issued to that person, the relevant National Identity card and his/her birth certificate should be forwarded to the number verification branch of the Department or to the National Identity card branch of the nearest Divisional Secretariat. The National Identity card, of which the accuracy is confirmed, will be entered into the system.
+
+Inquiries
+Head of Branch - Number Verification Branch
+Telephone : 011 52261624
+E-mail : hob.ccu@drp.lk
+
+
+Verification of National Identity Card Numbers 
+In the process of issuing National Identity cards to Sri Lankan citizens, when a person has applied to amend the National Identity card in possession or to obtain a duplicate of a lost National Identity card, or when receiving services using the National Identity card issued to the applicant, or when the following issues are detected, the relevant application will be dealt with promptly and correction will be done.
+
+The same National Identity card number issued to two persons
+National Identity card issued with a number that does not match the date of birth or gender, due to an error of the department.
+In cases where the applicant has been notified by a financial organization or any other institution to get the accuracy of the National Identity card checked.
+ Whenever there is a requirement for verification of the National Identity card numbers of deceased persons, the relevant number verification letter is issued by the number verification branch of the Department for Registration of Persons.
+Documents required for obtaining National Identity card number verification letters
+
+Request of the relevant person for a number verification letter from the Department.
+National Identity card issued for the last time.
+Birth Certificate
+Documents such as passport, driver’s license, bank passbook, employee provident fund records, etc. as acceptable written evidence for the use of the last issued national Identity card number.
+All the documents and records mentioned under the instructions for verification of National Identity card numbers of deceased persons, in the case of an inquiry made by the relatives after a death
+Note:
+
+It is mandatory for the individual to have the last issued National Identity card, and if the National Identity card is lost, damaged, defaced or the information is unclear, the person should submit the request for number verification letter subsequent to obtaining a duplicate of the identity card.
+In cases where the National Identity card verification has to be submitted to foreign missions on requirements of individuals, since the letter of verification of National Identity card number has to be issued in a trilingual format as per the agreement with the Ministry of Foreign Affairs, the National Identity card should have been obtained as a smart card.
+Also, on all occasions, the holder of the National Identity card and, in cases of verification of National Identity card number of a deceased person, the next of kin of the deceased should submit a request for obtaining number verification letter to the department, and an authorized person with the recommendation of the relevant Grama Niladhari can come to the department for special reasons such as disability/sickness.
+A fee of Rs. 500/- should be paid to the government for confirmation of the National Identity card number of a deceased person.
+
+Receiving National Identity cards of deceased persons 
+Steps should be taken to handover the National Identity cards of deceased persons to the Department for Registration of Persons or the Divisional Secretariat.
+
+It is stated in Registration of Persons Regulation No.16 of 2017 regarding the National Identity cards of deceased persons.
+National Identity cards of deceased persons should be surrendered to the department or to the Registration of Persons division at the Divisional Secretariat.
+
+Handing over the National Identity cards of deceased persons to the department
+
+Following documents are required when handing over the National Identity cards of deceased persons to the Operations Division of the Head Office.
+ National Identity card of the deceased along with 03 photocopies
+ Certified photocopy of death certificate
+ 03 completed forms of D.R.P./OP/01/3
+Acceptance of National Identity cards of deceased persons by the Divisional Secretariat
+
+
+If the National Identity card is available,
+
+ National Identity card of the deceased person
+ Annexure 01 formobtained from a relative of the deceased party.
+The form referred to in 2 above, following certification by the Registrar of Deaths, also certified by the Grama Niladhari.
+
+In cases where the National Identity card is lost,
+Accordingly,
+ Police report
+ Annexure Form 02 obtained from a relative of the deceased party.
+ The form referred to in 2 above, following certification by the Registrar of Deaths, also certified by the Grama Niladhari.
+
+Verification of Numbers of the Deceased Persons 
+Whenever there is a requirement to get the National Identity card numbers of deceased persons verified, the corresponding number verification letter is issued by the number verification branch of the Department for Registration of Persons.
+
+
+Legal Affairs 
+Whenever there are complaints related to the issued National Identity cards or in cases where problems are observed in the applications entered into the system (cases where the date of birth is different, cases where there are different dates of birth and birth certificates, cases where different names are used, cases where the identity cards are tampered with), a formal investigation will be conducted and action will be taken to resolve the relevant issues.
+
+
+Police Clearance 
+At present, the department’s data system is linked to the Sri Lanka Police; therefore, the Sri Lanka Police conducts police clearances, and applications with problems are forwarded to the department, and clearances are issued after solving the problems.
+
+
+Registration and Registration Confirmation Branch
+The main role can be described as checking and correcting the mistakes after all the personal data is entered into the data system in trilingual form and confirming of registered National Identity card number received by the applicant by comparing the documents submitted by the applicants with the old documents maintained by the department in the process of registration of persons.
+
+Deputy Commissioner
+...
+  Name : Mrs. M.K.G. Wijewickrama
+  Tel No : 011 5226130
+   email : ac_reg@drp.lk
+
+Request Deed and Extract Copies via Online Platform
+Through our online land service, you can apply for copies of the following documents from the Land Registry Offices.
+
+📌 Available Documents
+Copies of Deeds
+Copies of Extracts
+📋 How to Apply
+Important: Your application must be submitted to the land registry office where your land is registered.
+
+Visit the website: https://online.land.rgd.gov.lk
+Fill out the application – Accurately provide the required details of the document you are requesting.
+Make the payment – A payment receipt will be sent to your mobile number and email within 2 working days. Use secure online payment methods.
+Receive the document – You can either receive it by speed post or collect it from the Land Registry Office to which your request was submitted.
+This entire process takes 5 working days.
+For more details about land registry offices, please refer to the Land Registry Office Directory
+
+💳 Payment Methods
+Bank Cards (Visa / MasterCard)
+📞 Technical Support
+ICT Division – Registrar General’s Department
+Call us: 011 2889518
+Email: it@rgd.gov.lk
+
+
