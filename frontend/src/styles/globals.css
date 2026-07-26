@@ -13,8 +13,8 @@ body {
 }
 
 body {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: #f4f2ec; /* paper */
+  color: #14213d; /* ink */
   -webkit-font-smoothing: antialiased;
 }
 
@@ -26,6 +26,12 @@ body {
 }
 .gg-spin {
   animation: ggspin 0.7s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gg-spin {
+    animation: none !important;
+  }
 }
 
 /* Print: only the Action Pack survives (see docs/11 §5). */

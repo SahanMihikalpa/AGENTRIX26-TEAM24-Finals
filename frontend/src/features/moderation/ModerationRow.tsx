@@ -18,7 +18,7 @@ function ConfidencePill({ value }: { value: number }) {
       ? "border-verified-border bg-verified-bg text-verified-text"
       : value >= 0.4
         ? "border-pending-border bg-pending-bg text-pending-text"
-        : "border-slate-200 bg-slate-100 text-slate-600";
+        : "border-paper-line bg-paper-hair text-ink-soft";
   return (
     <span
       className={cn("rounded-full border px-2.5 py-1 text-[12px] font-semibold", tone)}
@@ -41,20 +41,28 @@ export function ModerationRow({
   onReject: () => void;
 }) {
   return (
-    <li className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 md:flex-row md:items-center">
+    <li className="flex flex-col gap-3 rounded-xl border border-paper-line bg-white p-4 md:flex-row md:items-center">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[12px] font-semibold text-slate-600">
+          <span className="rounded-md bg-paper-hair px-2 py-0.5 text-[12px] font-semibold text-ink-soft">
             {SOURCE_LABEL[item.sourceType]}
           </span>
+          {!item.isOfficial && (
+            <span
+              className="rounded-md border border-pending-border bg-pending-bg px-2 py-0.5 text-[12px] font-semibold text-pending-text"
+              title="Found outside official government domains. Promoting this makes it servable as fact — check the page itself first."
+            >
+              Not a .gov.lk source
+            </span>
+          )}
           <ConfidencePill value={item.confidence} />
-          <span className="text-[12.5px] text-slate-500">
+          <span className="text-[12.5px] text-ink-muted">
             Gathered {fmtDate(item.retrievedDate)}
             {item.publishedDate ? ` · published ${fmtDate(item.publishedDate)}` : ""}
           </span>
         </div>
 
-        <div className="mt-1.5 text-sm font-semibold text-slate-900">{item.title}</div>
+        <div className="mt-1.5 text-sm font-semibold text-ink">{item.title}</div>
 
         {item.url && (
           <a

@@ -26,7 +26,7 @@ export function MessageList({ messages }: { messages: Message[] }) {
             <Avatar />
             <div
               className={cn(
-                "max-w-[84%] rounded-[4px_16px_16px_16px] border border-slate-200 bg-white px-4 py-3 text-[15px] leading-relaxed text-slate-800",
+                "max-w-[84%] rounded-[4px_16px_16px_16px] border border-paper-line bg-white px-4 py-3 text-[15px] leading-relaxed text-ink",
               )}
             >
               {m.text}

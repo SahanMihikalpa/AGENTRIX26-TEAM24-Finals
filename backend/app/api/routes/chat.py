@@ -20,7 +20,7 @@ from app.api.dto import ActionPackDTO, ChatRequest
 from app.api.runtime import AppRuntime, get_runtime
 from app.api.session_state import thread_config
 from app.api.sse import EventTranslator, format_sse
-from app.application.graph import new_state
+from app.application.graph.state import continue_state, new_state
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
@@ -71,8 +71,20 @@ def _run(runtime: AppRuntime, session_id: str, message: str) -> Iterator[str]:
 def _graph_input(
     runtime: AppRuntime, config: dict[str, Any], session_id: str, message: str
 ) -> Any:
-    """Resume a paused interview, or start a fresh run for a new query."""
+    """Resume a paused interview, continue the conversation, or start fresh.
+
+    Three cases, in order:
+
+    1. **Paused** on A3's interrupt → the message is the citizen's answer.
+    2. **A completed thread** → the next turn of the same conversation. The
+       context is carried (see ``continue_state``) so a follow-up like "what about
+       Kandy?" still knows what is being discussed; it used to be wiped, which is
+       why only one run per session ever worked.
+    3. **Empty thread** → a brand-new conversation.
+    """
     snapshot = runtime.graph.get_state(config)
     if snapshot.next:  # paused on the A3 interrupt → feed the citizen's answer back
         return Command(resume=message)
+    if snapshot.values:
+        return continue_state(dict(snapshot.values), session_id, message)
     return new_state(session_id, message)

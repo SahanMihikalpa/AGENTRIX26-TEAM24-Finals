@@ -33,11 +33,11 @@ export function ActionPackView({
   );
 
   return (
-    <div className="gg-screen min-h-screen bg-slate-100">
-      <header className="gg-chrome sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/90 px-5 py-3 backdrop-blur">
+    <div className="gg-screen min-h-screen bg-paper">
+      <header className="gg-chrome sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-paper-border bg-[rgba(244,242,236,.9)] px-5 py-3 backdrop-blur">
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 rounded-[9px] border border-slate-200 bg-white px-[13px] py-[7px] text-[13px] font-medium text-slate-600 transition-colors hover:border-slate-300"
+          className="inline-flex items-center gap-1.5 rounded-[9px] border border-paper-border bg-paper-raised px-[13px] py-[7px] text-[13px] font-medium text-ink-soft transition-colors hover:border-[#cfc9bb]"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
             <path d="M15 6l-6 6 6 6" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -55,7 +55,7 @@ export function ActionPackView({
       </header>
 
       <main className="mx-auto max-w-[780px] px-5 pb-14 pt-[26px]">
-        <div className="gg-pack rounded-2xl border border-slate-200 bg-white p-9">
+        <div className="gg-pack rounded-[18px] border border-paper-line bg-white p-[clamp(24px,4vw,38px)] shadow-[0_10px_40px_rgba(20,33,61,.06)]">
           {pack.fallback ? (
             <div className="flex gap-3 rounded-xl border border-pending-border bg-pending-bg p-4">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="mt-0.5 flex-none">
@@ -69,12 +69,12 @@ export function ActionPackView({
             </div>
           ) : (
             <>
-              <div className="mb-[26px] flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-[22px]">
+              <div className="mb-[26px] flex flex-wrap items-start justify-between gap-4 border-b border-paper-hair pb-[22px]">
                 <div>
-                  <div className="mb-2 text-[11.5px] font-bold uppercase tracking-[.1em] text-brand">Action Pack</div>
-                  <h1 className="m-0 mb-2.5 text-[27px] font-bold leading-tight tracking-tight">{pack.serviceLabel}</h1>
+                  <div className="mb-2.5 text-[11.5px] font-bold uppercase tracking-[.12em] text-brand">Action Pack</div>
+                  <h1 className="m-0 mb-2.5 font-serif text-[clamp(23px,4vw,30px)] font-semibold leading-[1.12] tracking-[-0.01em]">{pack.serviceLabel}</h1>
                   {pack.caseSummary && (
-                    <span className="inline-block rounded-full bg-slate-100 px-[11px] py-1 text-[13px] font-medium text-slate-600">
+                    <span className="inline-block rounded-full bg-[#f1efe7] px-[11px] py-1 text-[13px] font-medium text-ink-soft">
                       Case: {pack.caseSummary}
                     </span>
                   )}
@@ -100,7 +100,7 @@ export function ActionPackView({
                 </div>
               )}
 
-              <div className="gg-noprint mt-7 flex flex-wrap gap-2.5 border-t border-slate-200 pt-6">
+              <div className="gg-noprint mt-7 flex flex-wrap items-center gap-2.5 border-t border-paper-hair pt-6">
                 <button
                   onClick={() => window.print()}
                   className="inline-flex items-center gap-[7px] rounded-[11px] bg-brand px-[18px] py-[11px] text-sm font-semibold text-white transition-colors hover:bg-brand-hover"
@@ -108,18 +108,20 @@ export function ActionPackView({
                   <PrintIcon />
                   Print
                 </button>
+                {/* Honest label: this opens the print dialog (from which you can
+                    "Save as PDF") rather than generating a file directly. */}
                 <button
                   onClick={() => window.print()}
-                  className="inline-flex items-center gap-[7px] rounded-[11px] border border-slate-300 bg-white px-[18px] py-[11px] text-sm font-semibold text-slate-700 transition-colors hover:border-brand hover:text-brand"
+                  className="inline-flex items-center gap-[7px] rounded-[11px] border border-[#d9d3c6] bg-white px-[18px] py-[11px] text-sm font-semibold text-ink-soft transition-colors hover:border-brand hover:text-brand"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                     <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  Download PDF
+                  Save as PDF (via print)
                 </button>
                 <button
                   onClick={() => router.push("/")}
-                  className="ml-auto inline-flex items-center gap-[7px] rounded-[11px] px-3.5 py-[11px] text-sm font-medium text-slate-500 transition-colors hover:text-slate-900"
+                  className="ml-auto inline-flex items-center gap-[7px] rounded-[11px] px-3.5 py-[11px] text-sm font-medium text-ink-muted transition-colors hover:text-ink"
                 >
                   Start over
                 </button>

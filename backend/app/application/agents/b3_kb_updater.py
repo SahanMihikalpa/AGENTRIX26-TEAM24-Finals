@@ -41,6 +41,9 @@ from app.domain.ports.embeddings import EmbeddingProvider
 from app.domain.ports.knowledge import KnowledgeStore
 
 _MAX_CHUNK_CHARS = 500
+# Ceiling for sources found outside the official-domain allow-list. Deliberately
+# under the default serving threshold (τ = 0.6) so AD-8 always gates them.
+_UNOFFICIAL_MAX_CONFIDENCE = 0.5
 
 
 class KBUpdaterAgent:
@@ -52,10 +55,12 @@ class KBUpdaterAgent:
         embedder: EmbeddingProvider,
         *,
         max_chunk_chars: int = _MAX_CHUNK_CHARS,
+        unofficial_max_confidence: float = _UNOFFICIAL_MAX_CONFIDENCE,
     ) -> None:
         self._store = store
         self._embedder = embedder
         self._max_chunk_chars = max_chunk_chars
+        self._unofficial_max_confidence = unofficial_max_confidence
 
     def __call__(self, state: GraphState) -> dict[str, Any]:
         written_service_id: int | None = None
@@ -193,18 +198,26 @@ class KBUpdaterAgent:
         ]
         self._store.upsert_chunks(chunks, self._embedder.embed_documents(pieces))
 
-    @staticmethod
-    def _build_source(src: dict[str, Any]) -> Source:
+    def _build_source(self, src: dict[str, Any]) -> Source:
+        is_official = bool(src.get("official", True))
+        confidence = float(src.get("confidence", 0.5))
+        if not is_official:
+            # Hard ceiling, below A6's serving threshold: something found outside
+            # government domains must never be able to render itself as a checklist,
+            # however confidently B2 extracted it. It lands in the moderation queue,
+            # and only a human promoting it can make it servable.
+            confidence = min(confidence, self._unofficial_max_confidence)
         return Source(
             title=str(src["title"]),
             url=src.get("url"),
             source_type=SourceType(src["source_type"]),
             published_date=_parse_date(src.get("published_date")),
             retrieved_date=_parse_date(src.get("retrieved_date")) or date.today(),
-            confidence=float(src.get("confidence", 0.5)),
+            confidence=confidence,
             verification_status=VerificationStatus(
                 src.get("verification_status", "auto_gathered")
             ),
+            is_official=is_official,
         )
 
 

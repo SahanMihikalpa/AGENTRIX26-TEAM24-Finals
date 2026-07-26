@@ -99,6 +99,10 @@ class ModerationItemDTO(BaseModel):
     verification_status: str
     retrieved_date: str
     published_date: str | None = None
+    # False for sources found outside the official-domain allow-list. Surfaced so
+    # a moderator can see they are about to promote something the government did
+    # not publish — the confidence number alone does not say that.
+    is_official: bool = True
 
 
 class ModerationActionResponse(BaseModel):

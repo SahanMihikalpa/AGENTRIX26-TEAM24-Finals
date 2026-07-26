@@ -11,7 +11,11 @@ CREATE TABLE IF NOT EXISTS source (
     retrieved_date      TEXT NOT NULL,
     confidence          REAL NOT NULL,
     verification_status TEXT NOT NULL,
-    content_hash        TEXT          -- for B3 dedup (not in the ER; see docs/10)
+    content_hash        TEXT,         -- for B3 dedup (not in the ER; see docs/10)
+    -- 1 unless the source came from B1's unrestricted second-tier search. Records
+    -- provenance, not trust level, so a moderator can see they are approving
+    -- something published outside government domains.
+    is_official         INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS service (

@@ -16,6 +16,7 @@ import { MessageList } from "@/features/conversation/MessageList";
 import { AgentProgress } from "@/features/conversation/AgentProgress";
 import { ClarifyCard } from "@/features/conversation/ClarifyCard";
 import { ActionPackCTA } from "@/features/conversation/ActionPackCTA";
+import { Composer } from "@/features/conversation/Composer";
 import { ActionPackView } from "@/features/action-pack/ActionPackView";
 
 type Screen = "conversation" | "pack";
@@ -53,15 +54,15 @@ function ChatInner() {
   }
 
   return (
-    <div className="gg-screen min-h-screen bg-slate-100">
-      <header className="gg-chrome sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-slate-50/90 px-5 py-3 backdrop-blur">
+    <div className="gg-screen min-h-screen bg-paper">
+      <header className="gg-chrome sticky top-0 z-10 flex items-center justify-between border-b border-paper-border bg-[rgba(244,242,236,.9)] px-5 py-3 backdrop-blur">
         <Logo size={28} />
         <Link href="/">
           <Button variant="secondary">Start over</Button>
         </Link>
       </header>
 
-      <main className="mx-auto max-w-[740px] px-5 pb-[220px] pt-6">
+      <main className="mx-auto max-w-[740px] px-5 pb-[300px] pt-6">
         <MessageList messages={chat.messages} />
 
         {chat.clarify && <ClarifyCard clarify={chat.clarify} onAnswer={chat.answer} />}
@@ -79,7 +80,18 @@ function ChatInner() {
         <div ref={bottomRef} />
       </main>
 
-      <AgentProgress steps={chat.steps} gap={chat.gap} running={chat.isRunning} />
+      {/* One fixed stack owns the bottom of the screen: progress above, composer
+          below. Each used to claim `bottom-0` for itself and overlap. */}
+      <div className="fixed inset-x-0 bottom-0">
+        <AgentProgress steps={chat.steps} gap={chat.gap} running={chat.isRunning} />
+        <Composer
+          onSend={chat.send}
+          // The ClarifyCard owns the turn while a structured question is open —
+          // two inputs racing for the same answer is a trap.
+          disabled={chat.isRunning || !!chat.clarify}
+          busy={chat.isRunning}
+        />
+      </div>
     </div>
   );
 }

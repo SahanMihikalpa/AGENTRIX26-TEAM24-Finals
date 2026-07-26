@@ -1,13 +1,41 @@
 import type { AgentStep } from "@/core/domain";
 
-/** Fresh set of progress pills for a new run (maps to graph nodes, docs/11 §1). */
+/** Fresh set of progress pills for a new run (maps to graph nodes, docs/11 §1).
+ *  Each carries a plain-language `detail` shown when the pill is expanded — it
+ *  makes the agent's work legible instead of a black box. */
 export function freshSteps(): AgentStep[] {
   return [
-    { id: "understand", label: "Understanding your request", status: "pending" },
-    { id: "find", label: "Finding the service", status: "pending" },
-    { id: "ask", label: "Asking what's needed", status: "pending" },
-    { id: "lookup", label: "Looking up requirements", status: "pending" },
-    { id: "prepare", label: "Preparing your checklist", status: "pending" },
+    {
+      id: "understand",
+      label: "Understanding your request",
+      status: "pending",
+      detail:
+        "Reading your words to work out what you actually need — in plain language, no forms or codes.",
+    },
+    {
+      id: "find",
+      label: "Finding the service",
+      status: "pending",
+      detail: "Matching your request to the exact government service that handles it.",
+    },
+    {
+      id: "ask",
+      label: "Asking what's needed",
+      status: "pending",
+      detail: "Checking whether we need one small detail from you so the checklist fits your case.",
+    },
+    {
+      id: "lookup",
+      label: "Looking up requirements",
+      status: "pending",
+      detail: "Pulling the documents, fees and office details from the official source for this service.",
+    },
+    {
+      id: "prepare",
+      label: "Preparing your checklist",
+      status: "pending",
+      detail: "Assembling your Action Pack — with the source and date behind every line.",
+    },
   ];
 }
 

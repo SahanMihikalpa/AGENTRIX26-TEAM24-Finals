@@ -265,6 +265,13 @@ class Source:
     url: str | None = None
     published_date: date | None = None
     id: int | None = None
+    # False when the source came from outside the official-domain allow-list —
+    # B1's second-tier search, used only when no gov.lk page exists for the
+    # request. Distinct from `confidence` (how sure the extraction is) and from
+    # `verification_status` (whether a human has approved it): this records
+    # *where it came from*, so a moderator reviewing the queue can see that they
+    # are about to promote something the government did not publish.
+    is_official: bool = True
 
 
 @dataclass(frozen=True, slots=True)

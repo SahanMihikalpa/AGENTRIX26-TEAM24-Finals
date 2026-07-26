@@ -28,7 +28,7 @@ env/
 .ruff_cache/
 .ipynb_checkpoints/
 
-# ── Local data stores (RAG / DB — not committed) ───────────────
+# ── Local data stores (RAG / DB) ───────────────────────────────
 *.sqlite
 *.sqlite3
 *.db
@@ -37,6 +37,18 @@ chroma/
 chroma_db/
 backend/data/chroma/
 backend/data/*.sqlite3
+
+# ...but DO commit the seeded knowledge base, so a fresh clone / deploy ships
+# with it (Render's disk is ephemeral). Re-include the dir, then its contents.
+!backend/data/govguide.sqlite3
+!backend/data/chroma/
+!backend/data/chroma/**
+# Conversation checkpoints stay out — they are transient, per-thread scratch.
+backend/data/checkpoints.sqlite3
+backend/data/checkpoints.*.sqlite3
+# SQLite WAL/SHM sidecars are always transient.
+*.sqlite3-wal
+*.sqlite3-shm
 
 # ── Node / Next.js (frontend) ──────────────────────────────────
 node_modules/
@@ -80,3 +92,4 @@ Thumbs.db
 desktop.ini
 
 *.pdf
+*.txt

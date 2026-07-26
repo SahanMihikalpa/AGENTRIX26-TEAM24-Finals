@@ -39,6 +39,12 @@ class GraphState(TypedDict):
     # ── identity / input ──────────────────────────────────────────
     session_id: str
     user_query: str
+    # Earlier turns of this conversation, oldest first: ``{"role", "text"}``.
+    # A1 reads them so a follow-up like "what about Kandy?" — meaningless alone —
+    # normalises into a self-contained query the rest of the pipeline can act on.
+    # Kept short (see ``continue_state``): the state is checkpointed on every node,
+    # so this is a rolling window, not a transcript.
+    history: list[dict[str, str]]
 
     # ── A1 · Intake & Intent ──────────────────────────────────────
     # {normalized_query, service_guess, entities, ambiguous}
@@ -47,6 +53,10 @@ class GraphState(TypedDict):
     # ── A2 · Service Identifier ───────────────────────────────────
     service_id: int | None
     service_unknown: bool
+    # The service this turn inherited from the previous one (``None`` on a fresh
+    # conversation). A2 overwrites ``service_id``, so this is what lets the
+    # supervisor notice the citizen changed subject and drop the stale context.
+    carried_service_id: int | None
 
     # ── A3 · Clarification (slot-filling interview) ───────────────
     variant_id: int | None
@@ -75,6 +85,44 @@ class GraphState(TypedDict):
     citations: list[dict[str, Any]]
 
 
+_HISTORY_TURNS = 6  # rolling window; the state is checkpointed on every node
+
+
+def continue_state(
+    previous: dict[str, Any], session_id: str, user_query: str
+) -> GraphState:
+    """Start the next turn of an existing conversation.
+
+    A completed thread used to be wiped and re-run from scratch, so a follow-up
+    ("what about Kandy?") arrived with no idea what was being discussed. This
+    instead carries the **conversational** facts — the history, and the service /
+    variant / slots pinned so far — while clearing everything that belongs to the
+    finished run (retrieval, grade, answer, acquisition scratch, any pending
+    question). A2 re-identifies the service from A1's history-aware query; when it
+    lands somewhere new, ``clear_stale_context`` drops the carried variant/slots.
+    """
+    state = new_state(session_id, user_query)
+    history = [
+        {"role": str(turn.get("role", "")), "text": str(turn.get("text", ""))}
+        for turn in previous.get("history") or []
+    ]
+    if previous.get("user_query"):
+        history.append({"role": "user", "text": str(previous["user_query"])})
+    answer = previous.get("answer")
+    if isinstance(answer, dict) and answer.get("service_label"):
+        history.append(
+            {"role": "assistant", "text": f"Answered about: {answer['service_label']}"}
+        )
+
+    carried_service_id = previous.get("service_id")
+    state["history"] = history[-_HISTORY_TURNS:]
+    state["service_id"] = carried_service_id
+    state["carried_service_id"] = carried_service_id
+    state["variant_id"] = previous.get("variant_id")
+    state["slots"] = dict(previous.get("slots") or {})
+    return state
+
+
 def new_state(session_id: str, user_query: str) -> GraphState:
     """Build a fresh :class:`GraphState` with every field at its empty default.
 
@@ -85,9 +133,11 @@ def new_state(session_id: str, user_query: str) -> GraphState:
     return GraphState(
         session_id=session_id,
         user_query=user_query,
+        history=[],
         intent={},
         service_id=None,
         service_unknown=False,
+        carried_service_id=None,
         variant_id=None,
         slots={},
         pending_question=None,

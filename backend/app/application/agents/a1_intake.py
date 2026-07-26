@@ -21,7 +21,12 @@ _SYSTEM = (
     "snake_case service_guess (e.g. land_deed_transfer), and pull out only "
     "entities the user actually stated. Never invent facts. Set ambiguous=true "
     "if the request could reasonably map to more than one government service. "
-    "The system is English-only."
+    "The system is English-only.\n\n"
+    "Earlier turns may be supplied. A follow-up is often meaningless on its own "
+    "(\"what about Kandy?\", \"and if it's a gift instead?\") — resolve it against "
+    "the conversation so normalized_query stands alone without it. If the citizen "
+    "has clearly moved to a different service, treat the new request on its own "
+    "terms and do not carry the old subject over."
 )
 
 
@@ -33,7 +38,7 @@ class IntakeIntentAgent:
 
     def __call__(self, state: GraphState) -> dict[str, Any]:
         result = self._llm.complete_structured(
-            self._prompt(state["user_query"]),
+            self._prompt(state["user_query"], state.get("history") or []),
             IntentExtraction,
             system=_SYSTEM,
         )
@@ -49,5 +54,15 @@ class IntakeIntentAgent:
         return {"intent": result.model_dump(), "slots": slots}
 
     @staticmethod
-    def _prompt(user_query: str) -> str:
-        return f"Citizen request:\n{user_query}\n\nExtract the structured intent."
+    def _prompt(user_query: str, history: list[dict[str, str]]) -> str:
+        if not history:
+            return f"Citizen request:\n{user_query}\n\nExtract the structured intent."
+        transcript = "\n".join(
+            f"{turn.get('role', 'user')}: {turn.get('text', '')}" for turn in history
+        )
+        return (
+            f"Conversation so far:\n{transcript}\n\n"
+            f"Citizen request (latest turn):\n{user_query}\n\n"
+            "Extract the structured intent for the latest turn, resolved against "
+            "the conversation."
+        )

@@ -47,6 +47,13 @@ WORKDIR /app
 COPY app ./app
 COPY pyproject.toml README.md ./
 
+# Bake the seeded knowledge base (govguide.sqlite3 + the Chroma store) so a
+# container with no mounted volume — a Render service without a persistent disk —
+# boots already populated. The .dockerignore keeps everything else under data/
+# out. A mounted volume (docker-compose, or a Render disk) overrides this at run
+# time. The chown below (whole /app) fixes ownership for the non-root user.
+COPY data ./data
+
 # Bake bge-base-en-v1.5 (~440 MB) into the image so the container needs no
 # HuggingFace round-trip at boot and the first /api/chat request skips the
 # download. Same model for writes (B3) and reads (A4) — the AD-4 invariant.

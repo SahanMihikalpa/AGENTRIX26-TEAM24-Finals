@@ -30,6 +30,7 @@ const initialState: State = {
 
 type Action =
   | { kind: "reset" }
+  | { kind: "newTurn" }
   | { kind: "addUser"; text: string }
   | { kind: "running" }
   | { kind: "event"; event: ChatEvent };
@@ -47,6 +48,21 @@ function reducer(state: State, action: Action): State {
   switch (action.kind) {
     case "reset":
       return { ...initialState, steps: freshSteps() };
+
+    case "newTurn":
+      // A follow-up is a fresh run of the pipeline, so the pills start over and
+      // the previous Action Pack stops being the current answer. The transcript
+      // is kept — that is the conversation. (Answering a ClarifyCard is *not* a
+      // new turn: it resumes the run in flight, whose earlier pills are still
+      // true and are never re-emitted.)
+      return {
+        ...settleState(state),
+        steps: freshSteps(),
+        actionPack: null,
+        clarify: null,
+        gap: null,
+        error: null,
+      };
 
     case "addUser":
       return {
@@ -102,8 +118,16 @@ function applyEvent(state: State, e: ChatEvent): State {
       };
 
     case "clarify":
+      // Record the question as an assistant turn so it stays in the transcript.
+      // Otherwise, once answered, only the citizen's reply ("Galle") would remain
+      // and the conversation would read as an answer with no visible question.
       return {
-        ...settleState(state),
+        ...state,
+        messages: [
+          ...settle(state.messages),
+          { id: `m${state.nextId}`, role: "assistant", text: e.question },
+        ],
+        nextId: state.nextId + 1,
         isRunning: false,
         clarify: { question: e.question, options: e.options, allowFreeText: e.allowFreeText },
       };
@@ -133,6 +157,9 @@ export interface UseChat {
   isRunning: boolean;
   error: string | null;
   start: (query: string) => void;
+  /** A new question or follow-up — resets the progress pills, keeps the transcript. */
+  send: (text: string) => void;
+  /** A reply to a ClarifyCard — resumes the run in flight. */
   answer: (text: string) => void;
 }
 
@@ -162,6 +189,15 @@ export function useChat(): UseChat {
     [run],
   );
 
+  const send = useCallback(
+    (text: string) => {
+      dispatch({ kind: "newTurn" });
+      dispatch({ kind: "addUser", text });
+      run(text);
+    },
+    [run],
+  );
+
   const answer = useCallback(
     (text: string) => {
       dispatch({ kind: "addUser", text });
@@ -180,6 +216,7 @@ export function useChat(): UseChat {
     isRunning: state.isRunning,
     error: state.error,
     start,
+    send,
     answer,
   };
 }

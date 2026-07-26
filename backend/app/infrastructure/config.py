@@ -50,7 +50,27 @@ class Settings(BaseSettings):
 
     # ── Web research ───────────────────────────────────────────────
     tavily_api_key: str | None = None
-    web_allowlist: str = "gov.lk"  # comma-separated
+    # Official domains B1 searches (comma-separated). `gov.lk` covers every
+    # *.gov.lk subdomain — including the gazette/acts portal `documents.gov.lk`;
+    # `parliament.lk` is the (non-gov.lk) official Parliament site.
+    web_allowlist: str = "gov.lk,parliament.lk"
+    # A subset searched *first* so authoritative legal sources (the gazette, acts)
+    # surface ahead of general portal pages. Must be within the allow-list.
+    web_priority_domains: str = "documents.gov.lk"
+    # When the allow-listed search finds nothing, search the wider web anyway.
+    # Those results are recorded as unofficial and capped below the serving
+    # threshold, so they reach a moderator rather than a citizen (docs/05).
+    web_fallback_unrestricted: bool = True
+    unofficial_max_confidence: float = 0.5
+    # Download + parse a PDF that a web result links to, so B1 ingests the full
+    # document instead of its one-line search snippet.
+    web_pdf_fetch: bool = True
+    # Source authority for B2 (confidence = authority * extraction certainty). An
+    # official (allow-listed) web result is authoritative enough to be served once
+    # extracted well — labelled "pending verification" — while an unofficial find
+    # stays below the serving gate and reaches a moderator instead.
+    web_official_authority: float = 0.75
+    web_unofficial_authority: float = 0.5
 
     # ── Embeddings (local) ─────────────────────────────────────────
     embedding_model: str = "BAAI/bge-base-en-v1.5"
@@ -66,7 +86,10 @@ class Settings(BaseSettings):
     # The LLM gateway paces outbound calls but never refuses them, so an
     # unbounded flood of /api/chat requests would still drain the day's free-tier
     # quota. These caps reject the excess at the edge instead (see api/rate_limit).
-    chat_rate_limit_rpm: int = 10  # POST /api/chat — the quota spender
+    # POST /api/chat — the quota spender. Sized for a real conversation (a turn
+    # is one request, and the A3 interview costs several), while the LLM gateway's
+    # own 15 rpm bucket remains the hard ceiling on provider spend.
+    chat_rate_limit_rpm: int = 30
     api_rate_limit_rpm: int = 60  # every other /api route
 
     # ── Observability ──────────────────────────────────────────────
@@ -82,6 +105,11 @@ class Settings(BaseSettings):
     def web_allowlist_domains(self) -> list[str]:
         """Allowed web-search domains as a clean list."""
         return [d.strip().lower() for d in self.web_allowlist.split(",") if d.strip()]
+
+    @property
+    def web_priority_domain_list(self) -> list[str]:
+        """Priority (gazette/legal) domains searched first, as a clean list."""
+        return [d.strip().lower() for d in self.web_priority_domains.split(",") if d.strip()]
 
 
 @lru_cache

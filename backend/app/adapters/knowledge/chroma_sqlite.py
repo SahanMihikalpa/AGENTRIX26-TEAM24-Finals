@@ -72,7 +72,25 @@ class ChromaSqliteStore:
         with self._lock:
             self._retire_legacy_tables()
             self._conn.executescript(ddl)
+            self._add_missing_columns()
             self._conn.commit()
+
+    def _add_missing_columns(self) -> None:
+        """Additive migrations for databases created before a column existed.
+
+        ``CREATE TABLE IF NOT EXISTS`` leaves an existing table untouched, so new
+        columns have to be added explicitly. Each is nullable or defaulted, so no
+        data is rewritten and nothing is lost — unlike a reshape, this is always
+        safe to run.
+        """
+        additions = {
+            ("source", "is_official"): "ALTER TABLE source ADD COLUMN "
+            "is_official INTEGER NOT NULL DEFAULT 1",
+        }
+        for (table, column), statement in additions.items():
+            if self._table_exists(table) and self._column_type(table, column) is None:
+                self._conn.execute(statement)
+                _log.info("Added column %s.%s", table, column)
 
     def _retire_legacy_tables(self) -> None:
         """Drop the pre-Stage-7 conversation tables so the DDL can be reapplied.
@@ -199,8 +217,8 @@ class ChromaSqliteStore:
         new_id = self._insert(
             "INSERT INTO source"
             " (title, url, source_type, published_date, retrieved_date, confidence,"
-            " verification_status, content_hash)"
-            " VALUES (?,?,?,?,?,?,?,?)",
+            " verification_status, content_hash, is_official)"
+            " VALUES (?,?,?,?,?,?,?,?,?)",
             (
                 source.title,
                 source.url,
@@ -210,6 +228,7 @@ class ChromaSqliteStore:
                 source.confidence,
                 source.verification_status.value,
                 content_hash,
+                int(source.is_official),
             ),
         )
         return replace(source, id=new_id)
@@ -720,4 +739,5 @@ def _row_to_source(row: sqlite3.Row) -> Source:
         retrieved_date=date.fromisoformat(row["retrieved_date"]),
         confidence=float(row["confidence"]),
         verification_status=VerificationStatus(row["verification_status"]),
+        is_official=bool(row["is_official"]),
     )

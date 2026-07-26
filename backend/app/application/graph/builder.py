@@ -88,10 +88,21 @@ def build_graph(deps: GraphDependencies, *, checkpointer: Any = None) -> Any:
             deps.source_pool,
             deps.web_search,
             allowlist=deps.web_allowlist,
+            priority_domains=deps.web_priority_domains,
             max_results=deps.top_k,
+            allow_unofficial_fallback=deps.allow_unofficial_fallback,
+            document_fetcher=deps.document_fetcher,
         ),
-        "b2": ExtractCurateAgent(deps.llm),
-        "b3": KBUpdaterAgent(deps.store, deps.embedder),
+        "b2": ExtractCurateAgent(
+            deps.llm,
+            web_official_authority=deps.web_official_authority,
+            web_unofficial_authority=deps.web_unofficial_authority,
+        ),
+        "b3": KBUpdaterAgent(
+            deps.store,
+            deps.embedder,
+            unofficial_max_confidence=deps.unofficial_max_confidence,
+        ),
         "b4": ModerationGateAgent(confidence_threshold=deps.confidence_threshold),
     }
 
@@ -100,6 +111,7 @@ def build_graph(deps: GraphDependencies, *, checkpointer: Any = None) -> Any:
         graph.add_node(name, node)
     graph.add_node("clarify", _clarify_node)
     graph.add_node("enter_gap", _enter_gap_node)
+    graph.add_node("clear_stale_context", _clear_stale_context_node)
     graph.add_node("cache_lookup", partial(_cache_lookup_node, cache=deps.answer_cache))
     graph.add_node(
         "persist_answer",
@@ -111,7 +123,10 @@ def build_graph(deps: GraphDependencies, *, checkpointer: Any = None) -> Any:
 
     graph.add_edge(START, "a1")
     graph.add_edge("a1", "a2")
-    graph.add_conditional_edges("a2", _route_after_identify, {"a3": "a3", "a4": "a4"})
+    graph.add_edge("a2", "clear_stale_context")
+    graph.add_conditional_edges(
+        "clear_stale_context", _route_after_identify, {"a3": "a3", "a4": "a4"}
+    )
     graph.add_conditional_edges(
         "a3", _route_after_clarify, {"clarify": "clarify", "cache_lookup": "cache_lookup"}
     )
@@ -154,6 +169,21 @@ def _enter_gap_node(state: GraphState) -> dict[str, Any]:
         "curated": [],
         "kb_updated": False,
     }
+
+
+def _clear_stale_context_node(state: GraphState) -> dict[str, Any]:
+    """Drop carried variant/slots when the citizen has changed subject.
+
+    A follow-up turn inherits the previous turn's ``variant_id`` and ``slots`` so
+    "what about Kandy?" keeps its service. But when A2 resolves a *different*
+    service, that inheritance is wrong — a NIC variant id means nothing for a land
+    deed, and A3 would happily skip questions it has not actually asked. A2 is the
+    topic detector here; no extra LLM call is needed to notice the switch.
+    """
+    carried = state["carried_service_id"]
+    if carried is None or carried == state["service_id"]:
+        return {}
+    return {"variant_id": None, "slots": {}, "asked_slots": [], "carried_service_id": None}
 
 
 def _cache_key(state: GraphState) -> CacheKey | None:

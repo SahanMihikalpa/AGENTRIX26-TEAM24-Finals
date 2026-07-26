@@ -11,6 +11,7 @@ const SEED: ModerationItem[] = [
     retrievedDate: "2026-07-21",
     confidence: 0.52,
     verificationStatus: "auto_gathered",
+    isOfficial: true,
   },
   {
     sourceId: 102,
@@ -21,6 +22,7 @@ const SEED: ModerationItem[] = [
     publishedDate: "2026-05-02",
     confidence: 0.61,
     verificationStatus: "auto_gathered",
+    isOfficial: true,
   },
   {
     sourceId: 103,
@@ -29,6 +31,19 @@ const SEED: ModerationItem[] = [
     retrievedDate: "2026-07-19",
     confidence: 0.34,
     verificationStatus: "pending",
+    isOfficial: true,
+  },
+  {
+    sourceId: 104,
+    title: "Sri Lanka NIC renewal — step by step (community guide)",
+    url: "https://example-blog.lk/nic-renewal",
+    sourceType: "portal",
+    retrievedDate: "2026-07-22",
+    confidence: 0.5,
+    verificationStatus: "auto_gathered",
+    // No official page existed, so B1's second tier found this. Capped below the
+    // serving threshold — it can only become servable if a moderator promotes it.
+    isOfficial: false,
   },
 ];
 

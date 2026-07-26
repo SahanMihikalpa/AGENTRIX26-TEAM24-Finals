@@ -5,8 +5,17 @@
 .env.*
 !.env.example
 
-# Local data stores — bind-mounted at run time (see docker-compose.yml).
-data/
+# Data: bake ONLY the seeded knowledge base into the image, so a deploy with no
+# mounted volume (e.g. a Render service without a persistent disk) starts already
+# populated. A mounted volume (docker-compose, or a Render disk) transparently
+# overrides it. Everything else under data/ is excluded — the 52 MB raw seed
+# corpus, transient checkpoints, and backups have no place in the image.
+data/seed/
+data/backups/
+data/checkpoints.sqlite3
+data/checkpoints.*.sqlite3
+data/*.sqlite3-wal
+data/*.sqlite3-shm
 
 # Python noise
 __pycache__/

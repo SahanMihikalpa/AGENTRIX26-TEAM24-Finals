@@ -19,6 +19,7 @@ from fastapi import Request
 from langgraph.checkpoint.sqlite import SqliteSaver
 
 from app.adapters.embeddings.bge import BgeEmbeddingProvider
+from app.adapters.fetch.http_pdf import HttpPdfFetcher
 from app.adapters.knowledge.chroma_sqlite import ChromaSqliteStore
 from app.adapters.llm.gemini import GeminiLLMProvider
 from app.adapters.llm.groq import GroqLLMProvider
@@ -65,19 +66,26 @@ def build_runtime(settings: Settings) -> AppRuntime:
     # One cache instance, shared by the graph (which reads/writes/invalidates it)
     # and the moderation service (which clears it when a source's trust changes).
     cache = InMemoryAnswerCache()
+    # The same parser serves the local source pool and the web PDF fetcher.
+    parser = PyMuPdfSourceParser()
+    document_fetcher = HttpPdfFetcher(parser) if settings.web_pdf_fetch else None
     deps = GraphDependencies(
         llm=llm,
         embedder=embedder,
         store=store,
         retriever=store,
-        source_pool=FilesystemSourcePool(
-            settings.source_pool_dir, parser=PyMuPdfSourceParser()
-        ),
+        source_pool=FilesystemSourcePool(settings.source_pool_dir, parser=parser),
         web_search=_build_web_search(settings),
+        document_fetcher=document_fetcher,
         answer_cache=cache,
         confidence_threshold=settings.confidence_threshold,
         max_acquisition_loops=settings.max_acquisition_loops,
         web_allowlist=settings.web_allowlist_domains,
+        web_priority_domains=settings.web_priority_domain_list,
+        allow_unofficial_fallback=settings.web_fallback_unrestricted,
+        unofficial_max_confidence=settings.unofficial_max_confidence,
+        web_official_authority=settings.web_official_authority,
+        web_unofficial_authority=settings.web_unofficial_authority,
     )
     graph = build_graph(deps, checkpointer=_build_checkpointer(settings))
     _log.info("Runtime built (graph compiled, checkpointer mounted)")
