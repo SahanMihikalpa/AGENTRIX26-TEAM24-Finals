@@ -68,5 +68,7 @@ export function toModerationItem(dto: ModerationItemDTO): ModerationItem {
     )
       ? dto.verification_status
       : "pending") as SourceVerificationStatus,
+    // Absent on older backends; assume official rather than crying wolf.
+    isOfficial: dto.is_official ?? true,
   };
 }

@@ -26,7 +26,22 @@ class WebSearch(Protocol):
     """A swappable web-search backend."""
 
     def search(
-        self, query: str, *, allowlist: Sequence[str], max_results: int = 5
+        self,
+        query: str,
+        *,
+        allowlist: Sequence[str],
+        max_results: int = 5,
+        unrestricted: bool = False,
     ) -> list[WebResult]:
-        """Search the web, returning only results whose host is in ``allowlist``."""
+        """Search the web, returning only results whose host is in ``allowlist``.
+
+        ``unrestricted=True`` drops the allow-list for this one call — the second
+        tier B1 uses when no official source exists for a request. It defaults to
+        ``False`` deliberately: QA-7 must never relax because a call site forgot a
+        parameter, so widening the reach has to be spelled out at the call.
+
+        What comes back from an unrestricted call is **not** official, and callers
+        must treat it accordingly (see B1: those results are marked and capped
+        below the serving threshold so AD-8 gates them into the moderation queue).
+        """
         ...

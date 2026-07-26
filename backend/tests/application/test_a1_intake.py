@@ -35,3 +35,54 @@ def test_leaves_unstated_slots_empty() -> None:
 
     assert update["slots"] == {}
     assert update["intent"]["ambiguous"] is False
+
+
+# ── conversation history (multi-turn follow-ups) ─────────────────
+class CapturingLLM(ScriptedLLM):
+    """Records the prompts so the history wiring can be asserted on."""
+
+    def __init__(self, intent: IntentExtraction) -> None:
+        super().__init__(structured={IntentExtraction: intent})
+        self.prompts: list[str] = []
+
+    def complete_structured(
+        self, prompt: str, schema: type, *, system: str | None = None, temperature: float = 0.0
+    ) -> object:
+        self.prompts.append(prompt)
+        return super().complete_structured(prompt, schema, system=system, temperature=temperature)
+
+
+def _intent() -> IntentExtraction:
+    return IntentExtraction(
+        normalized_query="land deed transfer in Kandy",
+        service_guess="land_deed_transfer",
+        entities=IntentEntities(district="Kandy"),
+        ambiguous=False,
+    )
+
+
+def test_a_first_turn_prompt_carries_no_transcript() -> None:
+    llm = CapturingLLM(_intent())
+
+    IntakeIntentAgent(llm)(new_state("s1", "transfer my land"))
+
+    assert "Conversation so far" not in llm.prompts[0]
+
+
+def test_a_follow_up_is_resolved_against_the_conversation() -> None:
+    """"what about Kandy?" means nothing alone — A1 is what makes it standalone."""
+    llm = CapturingLLM(_intent())
+    state = new_state("s1", "what about Kandy?")
+    state["history"] = [
+        {"role": "user", "text": "transfer my late father's land to my name"},
+        {"role": "assistant", "text": "Answered about: Land Deed Transfer (sale-transfer)"},
+    ]
+
+    update = IntakeIntentAgent(llm)(state)
+
+    prompt = llm.prompts[0]
+    assert "Conversation so far" in prompt
+    assert "transfer my late father's land to my name" in prompt
+    assert "Land Deed Transfer (sale-transfer)" in prompt
+    assert "latest turn" in prompt
+    assert update["slots"]["district"] == "Kandy"

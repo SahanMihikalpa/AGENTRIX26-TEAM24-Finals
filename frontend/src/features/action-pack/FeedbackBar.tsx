@@ -32,20 +32,20 @@ export function FeedbackBar({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <div className="gg-noprint mt-[18px] flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5">
-      <span className="text-sm font-medium text-slate-700">Did this match what the office asked for?</span>
+    <div className="gg-noprint mt-[18px] flex flex-wrap items-center justify-between gap-3 rounded-xl border border-paper-hair bg-paper-sunken px-4 py-3.5">
+      <span className="text-sm font-medium text-ink-soft">Did this match what the office asked for?</span>
       <div className="flex gap-2">
         <button
           onClick={() => submit("matched")}
           disabled={busy}
-          className="rounded-[9px] border border-slate-300 bg-white px-4 py-[7px] text-[13px] font-semibold text-slate-700 transition-colors hover:border-verified-dot hover:text-verified-text disabled:opacity-60"
+          className="rounded-[9px] border border-[#d9d3c6] bg-white px-4 py-[7px] text-[13px] font-semibold text-ink-soft transition-colors hover:border-verified-dot hover:text-verified-text disabled:opacity-60"
         >
           Yes
         </button>
         <button
           onClick={() => submit("extra_doc")}
           disabled={busy}
-          className="rounded-[9px] border border-slate-300 bg-white px-4 py-[7px] text-[13px] font-semibold text-slate-700 transition-colors hover:border-slate-300 disabled:opacity-60"
+          className="rounded-[9px] border border-[#d9d3c6] bg-white px-4 py-[7px] text-[13px] font-semibold text-ink-soft transition-colors hover:border-[#cfc9bb] disabled:opacity-60"
         >
           Not quite
         </button>

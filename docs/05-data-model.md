@@ -170,6 +170,49 @@ with **no sourced rows at all** used to yield an empty checklist wearing a `veri
 `ActionPack` `citations` come from the same set, which is what makes the UI's promise — "every
 requirement above is based on these official sources" — literally true.
 
+### Unofficial sources (`is_official`, Stage 7)
+
+Some requests have no page on any `gov.lk` domain, and B1's allow-listed search then returns nothing
+— a dead end for the citizen and for the gap loop. With `WEB_FALLBACK_UNRESTRICTED=true`, B1 runs a
+**second tier** without the allow-list, and records what it finds as `is_official = 0`.
+
+`is_official` is a **third, independent** signal. `verification_status` is whether a human approved
+it; `confidence` is how sure the extraction is; `is_official` is *where it came from*. A moderator
+needs the third one: a confidently-extracted blog post and a confidently-extracted gazette look
+identical without it, and the queue now labels the difference.
+
+**Source authority (B2).** `confidence = authority × extraction_certainty`, and the authority now
+splits official from unofficial web: `WEB_OFFICIAL_AUTHORITY` (0.75) vs `WEB_UNOFFICIAL_AUTHORITY`
+(0.5). So a well-extracted **official** (allow-listed, e.g. `gov.lk`) find lands around 0.68 — above
+`τ` — and is **served immediately, labelled "pending verification"** until a human confirms it,
+rather than dropping to the bare fallback. An unofficial find lands around 0.45 and, capped again by
+`UNOFFICIAL_MAX_CONFIDENCE` below, stays under the gate.
+
+Unofficial sources are capped at `UNOFFICIAL_MAX_CONFIDENCE` (0.5), deliberately below `τ`, however
+confident B2 was. So the serving gate above always refuses them: they can enter the knowledge base
+and be retrieved, but they cannot render a checklist. The only route from "found on the web" to
+"served as fact" runs through a human promoting it in the moderation queue.
+
+### Search tiers (B1)
+
+B1 searches official domains in order, de-duplicated by URL: a **priority tier**
+(`WEB_PRIORITY_DOMAINS`, default `documents.gov.lk` — the gazette/acts portal) so
+authoritative legal sources surface first, then the full **allow-list**
+(`WEB_ALLOWLIST`, default `gov.lk,parliament.lk`; `gov.lk` already covers every
+`*.gov.lk` subdomain, the gazette included). Only when *nothing* official is found
+does the gated **unrestricted tier** run (see above). All of it is env-configurable.
+
+### Linked PDFs (`WEB_PDF_FETCH`, Stage 7)
+
+A web search returns a link and a one-line snippet. For a government **PDF** — a form, circular or
+gazette — that snippet is a poor proxy for the document. With `WEB_PDF_FETCH=true` (default), B1
+downloads a result whose URL ends in `.pdf` and extracts its full text with the same PyMuPDF parser
+the local source pool uses, so B2 curates from the real requirements rather than a preview. The
+fetcher is deliberately narrow and defensive — PDF-only, `http(s)` only, a size cap read during
+download, a `%PDF` magic-byte check (an HTML error page served at a `.pdf` URL is rejected), and a
+text cap so a large document cannot blow the LLM prompt. Any failure degrades to the snippet; a
+gap-fill never crashes on a bad link. HTML full-page fetch remains snippet-only for now.
+
 ## Alternatives considered
 | Alternative | Why not |
 |---|---|

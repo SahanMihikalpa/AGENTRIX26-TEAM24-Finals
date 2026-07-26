@@ -190,3 +190,49 @@ def test_clarification_interrupts_then_resumes(
     answer = result["answer"]
     assert answer["fallback"] is False
     assert answer["service_label"] == "Land Deed Transfer (inheritance)"
+
+
+# ── topic switching within a conversation ────────────────────────
+def test_stale_variant_and_slots_are_dropped_when_a2_changes_service() -> None:
+    """A follow-up inherits the previous turn's variant and slots. If the citizen
+    has moved to a different service, that inheritance is wrong — a NIC variant id
+    is meaningless for a land deed, and A3 would skip questions it never asked."""
+    from app.application.graph.builder import _clear_stale_context_node
+    from app.application.graph.state import new_state
+
+    state = new_state("s1", "what about my NIC?")
+    state["carried_service_id"] = 1  # the conversation was about the land deed
+    state["service_id"] = 2  # A2 has just resolved NIC instead
+    state["variant_id"] = 7
+    state["slots"] = {"district": "Galle"}
+    state["asked_slots"] = ["condition", "district"]
+
+    update = _clear_stale_context_node(state)
+
+    assert update["variant_id"] is None
+    assert update["slots"] == {}
+    assert update["asked_slots"] == []
+    assert update["carried_service_id"] is None
+
+
+def test_context_survives_when_the_service_is_unchanged() -> None:
+    from app.application.graph.builder import _clear_stale_context_node
+    from app.application.graph.state import new_state
+
+    state = new_state("s1", "what about Kandy?")
+    state["carried_service_id"] = 1
+    state["service_id"] = 1  # same subject, just a refinement
+    state["variant_id"] = 7
+    state["slots"] = {"district": "Galle"}
+
+    assert _clear_stale_context_node(state) == {}
+
+
+def test_a_first_turn_never_clears_anything() -> None:
+    from app.application.graph.builder import _clear_stale_context_node
+    from app.application.graph.state import new_state
+
+    state = new_state("s1", "transfer my land")
+    state["service_id"] = 1  # nothing was carried in
+
+    assert _clear_stale_context_node(state) == {}

@@ -24,6 +24,8 @@ export interface AgentStep {
   status: AgentStepStatus;
   /** optional sub-note, e.g. the gap-fill message on `lookup` */
   note?: string;
+  /** plain-language explanation of the step, revealed when a pill is expanded */
+  detail?: string;
 }
 
 /** A3 clarification card. */

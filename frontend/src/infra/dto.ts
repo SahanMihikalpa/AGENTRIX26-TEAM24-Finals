@@ -65,6 +65,7 @@ export interface ModerationItemDTO {
   verification_status: string;
   retrieved_date: string;
   published_date: string | null;
+  is_official?: boolean;
 }
 
 /** Result of `POST /api/moderation/{id}/promote|reject`. */

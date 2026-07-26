@@ -30,9 +30,20 @@ _SYSTEM = (
     "a concrete government service, leave service_name empty."
 )
 
-# Source authority by origin: the local pool is most trusted, then web snippets,
-# then citizen experience reports (useful real-world signal, least authoritative).
-_AUTHORITY: dict[str, float] = {"pool": 0.8, "web": 0.5, "experience": 0.4}
+# Source authority feeding ``confidence = authority * extraction_certainty``.
+# The local pool is curated government material (most trusted). Web splits by
+# provenance: an **official** (allow-listed, e.g. gov.lk) page is authoritative
+# enough to clear the serving gate once extracted well, so it can be served
+# immediately — labelled "pending verification" until a human confirms it; an
+# **unofficial** page (B1's wider fallback) is kept below the gate so it only
+# reaches a moderator. Experience reports are a useful but least-authoritative
+# real-world signal.
+_AUTHORITY: dict[str, float] = {
+    "pool": 0.8,
+    "web_official": 0.75,
+    "web_unofficial": 0.5,
+    "experience": 0.4,
+}
 
 
 class ExtractCurateAgent:
@@ -43,16 +54,16 @@ class ExtractCurateAgent:
         llm: LLMProvider,
         *,
         pool_authority: float = _AUTHORITY["pool"],
-        web_authority: float = _AUTHORITY["web"],
+        web_official_authority: float = _AUTHORITY["web_official"],
+        web_unofficial_authority: float = _AUTHORITY["web_unofficial"],
         experience_authority: float = _AUTHORITY["experience"],
         today: date | None = None,
     ) -> None:
         self._llm = llm
-        self._authority = {
-            "pool": pool_authority,
-            "web": web_authority,
-            "experience": experience_authority,
-        }
+        self._pool_authority = pool_authority
+        self._web_official_authority = web_official_authority
+        self._web_unofficial_authority = web_unofficial_authority
+        self._experience_authority = experience_authority
         self._today = today or date.today()
 
     def __call__(self, state: GraphState) -> dict[str, Any]:
@@ -69,7 +80,8 @@ class ExtractCurateAgent:
     # ── helpers ──────────────────────────────────────────────────
     def _record(self, entry: dict[str, Any], extraction: CuratedExtraction) -> dict[str, Any]:
         origin = str(entry.get("origin", "web"))
-        confidence = self._confidence(origin, extraction.extraction_confidence)
+        official = bool(entry.get("official", True))
+        confidence = self._confidence(origin, official, extraction.extraction_confidence)
         return {
             "source": {
                 "title": entry["title"],
@@ -80,14 +92,26 @@ class ExtractCurateAgent:
                 "confidence": confidence,
                 "verification_status": "auto_gathered",
                 "origin": origin,
+                # Carried through from B1 so B3 can cap what came from outside the
+                # official-domain allow-list. Curation does not judge provenance —
+                # it only extracts — so this must survive the hop unchanged.
+                "official": bool(entry.get("official", True)),
             },
             "extraction": extraction.model_dump(),
             "text": entry["text"],
         }
 
-    def _confidence(self, origin: str, extraction_confidence: float) -> float:
-        authority = self._authority.get(origin, self._authority["web"])
+    def _confidence(self, origin: str, official: bool, extraction_confidence: float) -> float:
+        authority = self._authority_for(origin, official)
         return round(max(0.0, min(1.0, authority * extraction_confidence)), 3)
+
+    def _authority_for(self, origin: str, official: bool) -> float:
+        if origin == "pool":
+            return self._pool_authority
+        if origin == "experience":
+            return self._experience_authority
+        # Any web origin: an official page is trusted more than a wider-web find.
+        return self._web_official_authority if official else self._web_unofficial_authority
 
     @staticmethod
     def _prompt(entry: dict[str, Any]) -> str:

@@ -54,4 +54,5 @@ def _to_item(source: Source) -> ModerationItemDTO:
         published_date=(
             source.published_date.isoformat() if source.published_date else None
         ),
+        is_official=source.is_official,
     )

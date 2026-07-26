@@ -39,15 +39,24 @@ class DdgWebSearch:
         return self._client
 
     def search(
-        self, query: str, *, allowlist: Sequence[str], max_results: int = 5
+        self,
+        query: str,
+        *,
+        allowlist: Sequence[str],
+        max_results: int = 5,
+        unrestricted: bool = False,
     ) -> list[WebResult]:
-        raw = self._ensure_client().text(
-            _scoped_query(query, allowlist), max_results=max_results * _OVERFETCH_FACTOR
-        )
+        # Unrestricted means no `site:` scoping either — and no over-fetch, since
+        # nothing is being filtered out afterwards.
+        scoped = query if unrestricted else _scoped_query(query, allowlist)
+        fetch = max_results if unrestricted else max_results * _OVERFETCH_FACTOR
+        raw = self._ensure_client().text(scoped, max_results=fetch)
         results: list[WebResult] = []
         for item in raw:
             url = item.get("href") or item.get("url") or ""
-            if not host_allowed(url, allowlist):
+            if not url:
+                continue
+            if not unrestricted and not host_allowed(url, allowlist):
                 continue
             results.append(
                 WebResult(

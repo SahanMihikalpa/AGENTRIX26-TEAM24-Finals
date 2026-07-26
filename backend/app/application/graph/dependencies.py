@@ -15,6 +15,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from app.domain.ports.cache import AnswerCache
+from app.domain.ports.document_fetcher import DocumentFetcher
 from app.domain.ports.embeddings import EmbeddingProvider
 from app.domain.ports.knowledge import KnowledgeStore, Retriever
 from app.domain.ports.llm import LLMProvider
@@ -33,6 +34,9 @@ class GraphDependencies:
     retriever: Retriever
     source_pool: SourcePool
     web_search: WebSearch | None = None
+    # Optional: fetch + parse a PDF a web result links to, so B1 ingests the full
+    # document rather than its search snippet.
+    document_fetcher: DocumentFetcher | None = None
     # Optional: when absent the graph simply never short-circuits (AD-12 is an
     # optimization, not correctness), which keeps existing tests wiring-free.
     answer_cache: AnswerCache | None = None
@@ -45,3 +49,11 @@ class GraphDependencies:
     grader_sufficient_above: float = 0.5  # A5 thresholds
     grader_gap_below: float = 0.3
     web_allowlist: Sequence[str] = ()  # QA-7 (e.g. ["gov.lk"])
+    web_priority_domains: Sequence[str] = ()  # gazette/legal, searched first
+    # B1's second tier: search beyond the allow-list when it yields nothing. What
+    # it finds is capped below the serving threshold, so it is reviewed, not served.
+    allow_unofficial_fallback: bool = False
+    unofficial_max_confidence: float = 0.5
+    # B2 source authority (confidence = authority * extraction certainty).
+    web_official_authority: float = 0.75
+    web_unofficial_authority: float = 0.5

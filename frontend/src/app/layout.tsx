@@ -1,5 +1,22 @@
 import type { Metadata } from "next";
+import { Inter, Source_Serif_4 } from "next/font/google";
 import "@/styles/globals.css";
+
+// Self-hosted at build time (no external font request at runtime). Inter carries
+// the UI/body; Source Serif 4 is the display face for headings and figures.
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const serif = Source_Serif_4({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-serif",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "GovGuide — Government services made clear",
@@ -9,16 +26,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="font-sans text-slate-900 antialiased">{children}</body>
+    <html lang="en" className={`${inter.variable} ${serif.variable}`}>
+      <body className="bg-paper font-sans text-ink antialiased">{children}</body>
     </html>
   );
 }

@@ -23,6 +23,9 @@ export interface ModerationItem {
   publishedDate?: string;
   confidence: number;
   verificationStatus: SourceVerificationStatus;
+  /** False when the source came from outside the official government domains —
+   *  the moderator needs to see that before promoting it. */
+  isOfficial: boolean;
 }
 
 /** Experience report submitted from the Action Pack feedback bar (FR-6). */

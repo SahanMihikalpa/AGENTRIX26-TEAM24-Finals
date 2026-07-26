@@ -35,18 +35,27 @@ class TavilyWebSearch:
         return self._client
 
     def search(
-        self, query: str, *, allowlist: Sequence[str], max_results: int = 5
+        self,
+        query: str,
+        *,
+        allowlist: Sequence[str],
+        max_results: int = 5,
+        unrestricted: bool = False,
     ) -> list[WebResult]:
         response = self._ensure_client().search(
             query=query,
             max_results=max_results,
-            include_domains=normalized_domains(allowlist),
+            # Both filters drop together, or the server-side one would silently
+            # return nothing for an unrestricted call.
+            include_domains=[] if unrestricted else normalized_domains(allowlist),
             search_depth="basic",
         )
         results: list[WebResult] = []
         for item in response.get("results", []):
             url = item.get("url", "")
-            if not host_allowed(url, allowlist):
+            if not url:
+                continue
+            if not unrestricted and not host_allowed(url, allowlist):
                 continue
             results.append(
                 WebResult(

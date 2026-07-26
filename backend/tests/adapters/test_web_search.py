@@ -83,3 +83,59 @@ def test_ddg_scopes_query_filters_and_caps_results() -> None:
     assert [r.url for r in results] == ["https://a.gov.lk/1", "https://c.gov.lk/3"]
     assert "site:gov.lk" in client.last_query
     assert results[0].snippet == "b1"
+
+
+# ── the second tier: explicit, opt-in widening (docs/05) ─────────
+_MIXED = [
+    {"title": "Gov", "url": "https://rgd.gov.lk/a", "content": "official"},
+    {"title": "Blog", "url": "https://blog.example.com/a", "content": "unofficial"},
+]
+
+
+def test_tavily_keeps_the_allowlist_by_default() -> None:
+    """The default must stay closed: QA-7 cannot relax by omission."""
+    client = _FakeTavilyClient(list(_MIXED))
+
+    results = TavilyWebSearch("k", client=client).search("q", allowlist=["gov.lk"])
+
+    assert [r.url for r in results] == ["https://rgd.gov.lk/a"]
+    assert client.last_kwargs["include_domains"] == ["gov.lk"]
+
+
+def test_tavily_unrestricted_drops_both_filters() -> None:
+    client = _FakeTavilyClient(list(_MIXED))
+
+    results = TavilyWebSearch("k", client=client).search(
+        "q", allowlist=["gov.lk"], unrestricted=True
+    )
+
+    # Server-side and local filters must drop together, or the API would return
+    # nothing for a call that asked to look wider.
+    assert client.last_kwargs["include_domains"] == []
+    assert [r.url for r in results] == [r["url"] for r in _MIXED]
+
+
+def test_ddg_keeps_the_allowlist_by_default() -> None:
+    client = _FakeDdgsClient(list(_MIXED))
+
+    results = DdgWebSearch(client=client).search("q", allowlist=["gov.lk"])
+
+    assert [r.url for r in results] == ["https://rgd.gov.lk/a"]
+    assert "site:gov.lk" in client.last_query
+
+
+def test_ddg_unrestricted_drops_the_site_scope() -> None:
+    client = _FakeDdgsClient(list(_MIXED))
+
+    results = DdgWebSearch(client=client).search(
+        "q", allowlist=["gov.lk"], unrestricted=True
+    )
+
+    assert "site:" not in client.last_query
+    assert [r.url for r in results] == [r["url"] for r in _MIXED]
+
+
+def test_results_without_a_url_are_dropped_either_way() -> None:
+    client = _FakeTavilyClient([{"title": "No url", "url": "", "content": "x"}])
+
+    assert TavilyWebSearch("k", client=client).search("q", allowlist=[], unrestricted=True) == []

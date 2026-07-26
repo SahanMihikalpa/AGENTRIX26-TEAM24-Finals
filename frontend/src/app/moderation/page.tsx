@@ -16,8 +16,8 @@ export const metadata = {
  */
 export default function ModerationPage() {
   return (
-    <div className="gg-screen min-h-screen bg-slate-100">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-slate-50/90 px-5 py-3 backdrop-blur">
+    <div className="gg-screen min-h-screen bg-paper">
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-paper-border bg-[rgba(244,242,236,.9)] px-5 py-3 backdrop-blur">
         <Logo size={28} />
         <Link href="/">
           <Button variant="secondary">Back to GovGuide</Button>
