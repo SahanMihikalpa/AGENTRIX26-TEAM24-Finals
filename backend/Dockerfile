@@ -32,6 +32,17 @@ RUN pip install --index-url https://download.pytorch.org/whl/cpu torch==2.12.1
 COPY requirements.txt ./
 RUN pip install -r requirements.txt
 
+# Pin back from whatever 2.x requirements.txt resolved. NumPy's PyPI wheels from
+# ~1.25 onward are compiled requiring the "x86-64-v2" CPU baseline (SSE4.2,
+# SSSE3, POPCNT); a VM whose hypervisor exposes an older/generic virtual CPU
+# (common on default kvm64/qemu64 profiles) hard-crashes on import with
+# "NumPy was built with baseline optimizations... but your machine doesn't
+# support". 1.26.4 predates that hard requirement and runtime-dispatches
+# instead, so it degrades to a slower path rather than crashing. Forced with
+# --force-reinstall because torch/transformers above may have already pulled
+# in numpy 2.x transitively.
+RUN pip install --no-cache-dir --force-reinstall "numpy==1.26.4"
+
 
 # ── Stage 2: runtime — the venv, the app, and the embedding model ────────────
 FROM python:3.11-slim AS runtime

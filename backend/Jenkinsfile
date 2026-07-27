@@ -1,84 +1,91 @@
-// GovGuide backend — standalone deploy pipeline.
-//
-// Builds and redeploys only the backend container via the root
-// docker-compose.yml (`--no-deps` so the frontend container is left alone).
-// Runs on the same host that serves the containers — Jenkins' own service
-// account must be in the `docker` group (see ../DOCKER.md).
-//
-// Required Jenkins credential:
-//   govguide-backend-env  (Secret file) — a full backend/.env with the real
-//   GEMINI_API_KEY / GROQ_API_KEY / TAVILY_API_KEY. Never stored in git.
-
 pipeline {
     agent any
 
-    environment {
-        PUBLIC_HOST   = '10.50.227.200'
-        FRONTEND_PORT = '3001'   // needed at build time: CORS_ORIGINS tracks it
-        BACKEND_PORT  = '8001'
-        COMPOSE       = 'docker compose'
+    options {
+        timestamps()
+        disableConcurrentBuilds()
     }
 
-    options {
-        disableConcurrentBuilds()
-        timeout(time: 15, unit: 'MINUTES')
+    parameters {
+        string(name: 'GIT_REPO_URL', defaultValue: 'https://github.com/SahanMihikalpa/AGENTRIX26-TEAM24-Finals.git', description: 'Repo URL (monorepo — this job only builds backend/)')
+        string(name: 'GIT_BRANCH', defaultValue: 'main', description: 'Branch to deploy')
+        string(name: 'IMAGE_NAME', defaultValue: 'govguide-backend:latest', description: 'Docker image name')
+        string(name: 'CONTAINER_NAME', defaultValue: 'govguide-backend', description: 'Docker container name')
+        string(name: 'HOST_PORT', defaultValue: '8001', description: 'Host port published for the backend')
+        string(name: 'CORS_ORIGIN', defaultValue: 'http://10.50.227.200:3001', description: 'Frontend origin allowed to call this API')
+    }
+
+    environment {
+        DOCKER_BUILDKIT = '1'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
+                git branch: "${params.GIT_BRANCH}",
+                    url: "${params.GIT_REPO_URL}",
+                    credentialsId: 'github-credentials'
             }
         }
 
-        stage('Inject backend secrets') {
+        stage('Build Docker Image') {
             steps {
-                withCredentials([file(credentialsId: 'govguide-backend-env', variable: 'BACKEND_ENV_FILE')]) {
-                    sh 'cp "$BACKEND_ENV_FILE" backend/.env'
+                sh "docker build -t ${params.IMAGE_NAME} backend"
+            }
+        }
+
+        stage('Deploy Container') {
+            steps {
+                // Every other setting has a working default in
+                // app/infrastructure/config.py — only the three provider keys
+                // need real values, so they're the only secrets this job needs.
+                withCredentials([
+                    string(credentialsId: 'gemini-api-key', variable: 'GEMINI_API_KEY'),
+                    string(credentialsId: 'groq-api-key',   variable: 'GROQ_API_KEY'),
+                    string(credentialsId: 'tavily-api-key', variable: 'TAVILY_API_KEY')
+                ]) {
+                    sh "docker rm -f ${params.CONTAINER_NAME} || true"
+                    sh """
+                        docker run -d --name ${params.CONTAINER_NAME} \\
+                          -p ${params.HOST_PORT}:8000 \\
+                          -e HOST=0.0.0.0 \\
+                          -e PORT=8000 \\
+                          -e CORS_ORIGINS=${params.CORS_ORIGIN} \\
+                          -e GEMINI_API_KEY=\$GEMINI_API_KEY \\
+                          -e GROQ_API_KEY=\$GROQ_API_KEY \\
+                          -e TAVILY_API_KEY=\$TAVILY_API_KEY \\
+                          -v \$(pwd)/backend/data:/app/data \\
+                          --restart unless-stopped \\
+                          ${params.IMAGE_NAME}
+                    """
                 }
-            }
-        }
-
-        stage('Build backend image') {
-            steps {
-                sh '${COMPOSE} build backend'
-            }
-        }
-
-        stage('Deploy backend') {
-            steps {
-                sh '${COMPOSE} up -d --no-deps backend'
             }
         }
 
         stage('Health check') {
             steps {
-                sh '''
-                    set -e
-                    for i in $(seq 1 20); do
-                        if curl -fsS "http://127.0.0.1:${BACKEND_PORT}/health" > /dev/null; then
-                            echo "backend healthy"
+                sh """
+                    for i in \$(seq 1 20); do
+                        if curl -fsS http://127.0.0.1:${params.HOST_PORT}/health > /dev/null; then
+                            echo backend healthy
                             exit 0
                         fi
-                        [ "$i" -eq 20 ] && { echo "backend failed health check"; exit 1; }
                         sleep 3
                     done
-                '''
+                    echo backend failed health check
+                    exit 1
+                """
             }
         }
     }
 
     post {
-        always {
-            sh '${COMPOSE} ps backend'
-        }
         failure {
-            sh '${COMPOSE} logs --tail=150 backend'
+            sh "docker logs --tail=150 ${params.CONTAINER_NAME} || true"
+            echo 'Build or deployment failed. Check the console output for the exact Docker or Git error.'
         }
-        cleanup {
-            // Plaintext secrets never belong in the workspace after the build
-            // has consumed them into the container's runtime env.
-            sh 'rm -f backend/.env'
+        success {
+            echo "Backend image built and deployed successfully on port ${params.HOST_PORT}."
         }
     }
 }
