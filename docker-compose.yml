@@ -18,12 +18,12 @@ services:
     environment:
       # Explicit overrides — these must hold inside the container regardless of
       # what .env says. CORS is the *browser* origin, so it has to track the
-      # frontend's published host port, not its container port.
+      # frontend's published host + port, not its container port.
       HOST: "0.0.0.0"
       PORT: "8000"
-      CORS_ORIGINS: "http://localhost:${FRONTEND_PORT:-3100}"
+      CORS_ORIGINS: "http://${PUBLIC_HOST:-localhost}:${FRONTEND_PORT:-3100}"
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     volumes:
       # Bind mount, not a named volume: the KB is already seeded on the host
       # (data/chroma + data/govguide.sqlite3), so the container starts with real
@@ -49,7 +49,7 @@ services:
       args:
         # Build-time, not run-time: Next inlines NEXT_PUBLIC_* into the client
         # bundle. Changing these needs a rebuild, not just a restart.
-        NEXT_PUBLIC_API_BASE: "http://localhost:8000"
+        NEXT_PUBLIC_API_BASE: "http://${PUBLIC_HOST:-localhost}:${BACKEND_PORT:-8000}"
         NEXT_PUBLIC_USE_MOCK: "false"
     image: govguide-frontend:latest
     container_name: govguide-frontend
