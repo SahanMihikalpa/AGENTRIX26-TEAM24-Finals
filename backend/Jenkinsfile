@@ -1,11 +1,9 @@
 pipeline {
     agent any
-
     options {
         timestamps()
         disableConcurrentBuilds()
     }
-
     parameters {
         string(name: 'GIT_REPO_URL', defaultValue: 'https://github.com/SahanMihikalpa/AGENTRIX26-TEAM24-Finals.git', description: 'Repo URL (monorepo — this job only builds backend/)')
         string(name: 'GIT_BRANCH', defaultValue: 'main', description: 'Branch to deploy')
@@ -13,12 +11,11 @@ pipeline {
         string(name: 'CONTAINER_NAME', defaultValue: 'govguide-backend', description: 'Docker container name')
         string(name: 'HOST_PORT', defaultValue: '8001', description: 'Host port published for the backend')
         string(name: 'CORS_ORIGIN', defaultValue: 'http://10.50.227.200:3001', description: 'Frontend origin allowed to call this API')
+        string(name: 'CORS_ORIGIN', defaultValue: 'http://10.50.227.200:3001,http://192.248.50.238:3001', description: 'Frontend origin allowed to call this API')
     }
-
     environment {
         DOCKER_BUILDKIT = '1'
     }
-
     stages {
         stage('Checkout') {
             steps {
@@ -27,13 +24,28 @@ pipeline {
                     credentialsId: 'github-credentials'
             }
         }
-
         stage('Build Docker Image') {
             steps {
                 sh "docker build -t ${params.IMAGE_NAME} backend"
             }
         }
-
+        stage('Fix data directory permissions') {
+            steps {
+                // The container runs as uid 10001 (backend/Dockerfile), but this
+                // directory is bind-mounted from the host, so the container sees
+                // the HOST ownership, not the image's baked-in chown. A fresh git
+                // checkout owns it as the Jenkins user, which uid 10001 can read
+                // but not write — Chroma's sqlite backing store then throws
+                // "attempt to write a readonly database". Jenkins already owns
+                // these files, so this needs no elevated privileges.
+                // Best-effort: files the container already wrote (as uid 10001)
+                // are owned by that uid, not Jenkins', so chmod on those specific
+                // files fails with "Operation not permitted" — expected and fine,
+                // since they're already permissive from the run that wrote them.
+                // `|| true` stops that from failing the whole stage.
+                sh "chmod -R a+rwX backend/data || true"
+            }
+        }
         stage('Deploy Container') {
             steps {
                 // Every other setting has a working default in
@@ -61,7 +73,6 @@ pipeline {
                 }
             }
         }
-
         stage('Health check') {
             steps {
                 sh """
@@ -78,7 +89,6 @@ pipeline {
             }
         }
     }
-
     post {
         failure {
             sh "docker logs --tail=150 ${params.CONTAINER_NAME} || true"
